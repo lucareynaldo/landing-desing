@@ -14,7 +14,11 @@
 }
 
 @theme {
-  /* --- Color. Medido de readymag.com --- */
+  /* --- Color. Medido de readymag.com ---
+     Estos son los valores del MODO CLARO. El oscuro los pisa mas abajo.
+     Las utilidades de Tailwind compilan a var(--color-*), asi que siguen la
+     cascada solas: ningun componente necesita enterarse de que hay temas, y
+     no hace falta una sola variante `dark:` en todo el sitio. */
   --color-ink: #282828;        /* texto por defecto. NO negro puro */
   --color-ink-strong: #000000; /* titulares */
   --color-ink-muted: #808080;
@@ -23,7 +27,6 @@
   --color-surface: #ffffff;    /* la pagina es blanca */
   --color-surface-2: #f4f4f4;
   --color-surface-3: #e7e7e7;
-  --color-sheet: #eeeeee;      /* gris de la lamina de sethlukin */
   --color-void: #000000;       /* footer */
 
   --color-accent: #8800ff;     /* violeta readymag */
@@ -53,6 +56,36 @@
 :root {
   color-scheme: light;
   background-color: var(--color-void); /* el footer asoma por detras */
+}
+
+/* ---------------------------------------------------------------
+   Modo oscuro.
+
+   Es una inversion fotografica: cada valor es 255 menos el del claro. Por eso
+   --color-ink-muted casi no se mueve, ya estaba en el medio, y el texto
+   secundario conserva su relacion con el fondo en los dos modos.
+
+   El bloque va DESPUES de :root a proposito: los dos selectores tienen la
+   misma especificidad y apuntan al mismo elemento, asi que el orden es lo
+   unico que decide quien gana.
+
+   Lo que NO se invierte: los acentos, que son la marca y no el fondo, y las
+   paletas que viven en los componentes -logos del stack, tonos de los
+   trabajos, feeds de PainPoints, camino del proceso, manchas del footer-.
+   Esas estan elegidas como color, no como contraste.
+---------------------------------------------------------------- */
+[data-tema="oscuro"] {
+  --color-ink: #d7d7d7;
+  --color-ink-strong: #ffffff;
+  --color-ink-muted: #7f7f7f;
+  --color-ink-soft: #bbbbbb;
+
+  --color-surface: #000000;
+  --color-surface-2: #0b0b0b;
+  --color-surface-3: #181818;
+  --color-void: #ffffff; /* el footer se da vuelta con todo lo demas */
+
+  color-scheme: dark;
 }
 
 html {

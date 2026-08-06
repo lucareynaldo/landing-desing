@@ -32,6 +32,27 @@ const {
       crossorigin
     />
     <title>{title}</title>
+
+    {/*
+      Estampa el tema ANTES de que se pinte nada. Va inline y bloqueante en el
+      head a proposito: si corriera despues del primer frame, cada carga en
+      oscuro arrancaria con un flash blanco.
+
+      Sin nada guardado se sigue al sistema. La eleccion manual, cuando
+      existe, siempre gana.
+    */}
+    <script is:inline>
+      (() => {
+        try {
+          const guardado = localStorage.getItem("tema");
+          document.documentElement.dataset.tema =
+            guardado ||
+            (matchMedia("(prefers-color-scheme: dark)").matches ? "oscuro" : "claro");
+        } catch {
+          /* sin localStorage queda el claro, que es el default del CSS */
+        }
+      })();
+    </script>
   </head>
 
   <body>

@@ -15,18 +15,21 @@ interface Props {
   /** Posicion en la cadena de 20 elementos. */
   indice: number;
   direccion: Direccion;
+  /** Color del nodo del que SALE este tramo: el color se arrastra detras del
+   *  frente y el nodo siguiente entra con uno nuevo. */
+  tono: string;
   /** Celda del grid en desktop. En movil no se usa. */
   col: number;
   fila: number;
 }
 
-const { indice, direccion, col, fila } = Astro.props;
+const { indice, direccion, tono, col, fila } = Astro.props;
 ---
 
 <li
   class="proceso-celda proceso-vertice"
   data-direccion={direccion}
-  style={`--i:${indice}; --col:${col}; --fila:${fila};`}
+  style={`--i:${indice}; --col:${col}; --fila:${fila}; --tono:${tono};`}
   aria-hidden="true"
 >
 </li>
@@ -43,11 +46,18 @@ const { indice, direccion, col, fila } = Astro.props;
   .proceso-vertice::before {
     content: "";
     position: absolute;
-    background: var(--color-ink-strong);
+    /* Mismo color que el nodo del que sale, apagandose a tinta con la estela.
+       2px y no 1: a un pixel el color casi no se ve y el tramo queda como una
+       linea gris con una idea de color. */
+    background: color-mix(
+      in srgb,
+      var(--tono),
+      var(--color-ink-strong) calc(var(--estela, 0) * 100%)
+    );
     top: 0;
     bottom: 0;
-    left: 50%;
-    width: 1px;
+    left: calc(50% - 1px);
+    width: 2px;
     scale: 1 var(--local, 0);
     transform-origin: center top;
   }
@@ -55,12 +65,12 @@ const { indice, direccion, col, fila } = Astro.props;
   @media (min-width: 768px) {
     .proceso-vertice[data-direccion="derecha"]::before,
     .proceso-vertice[data-direccion="izquierda"]::before {
-      top: 50%;
+      top: calc(50% - 1px);
       bottom: auto;
       left: 0;
       right: 0;
       width: auto;
-      height: 1px;
+      height: 2px;
       scale: var(--local, 0) 1;
     }
 

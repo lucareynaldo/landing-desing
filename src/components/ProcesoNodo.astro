@@ -5,19 +5,21 @@
 interface Props {
   n: string;
   nombre: string;
-  /** Posicion en la cadena de 20 elementos: define cuando le toca encenderse. */
+  /** Color con el que llega esta etapa, antes de apagarse a tinta. */
+  tono: string;
+  /** Posicion en la cadena de 20 elementos: define cuando le toca aparecer. */
   indice: number;
   /** Celda del grid en desktop. En movil no se usa: cae por orden del DOM. */
   col: number;
   fila: number;
 }
 
-const { n, nombre, indice, col, fila } = Astro.props;
+const { n, nombre, tono, indice, col, fila } = Astro.props;
 ---
 
 <li
   class="proceso-celda proceso-nodo"
-  style={`--i:${indice}; --col:${col}; --fila:${fila};`}
+  style={`--i:${indice}; --col:${col}; --fila:${fila}; --tono:${tono};`}
 >
   <span class="proceso-n type-meta">{n}</span>
   <span class="proceso-nombre type-display">{nombre}</span>
@@ -31,36 +33,49 @@ const { n, nombre, indice, col, fila } = Astro.props;
     padding: 0.9rem 1.1rem;
     border: 1px solid;
     border-radius: 0.75rem;
-    background: var(--color-surface);
     list-style: none;
 
-    /* Tres veces mas rapido que su tramo de la cadena. A la velocidad del
-       tramo el nodo se va tiñendo despacio y se lee como una mancha que crece;
-       asi se enciende con decision, que es lo que tiene que comunicar una
-       etapa que se activa. */
-    --encendido: clamp(0, calc(var(--local, 0) * 3), 1);
+    /* El nodo APARECE, no se tiñe. Antes las diez cajas estaban desde el
+       principio en gris claro y lo unico que viajaba era el color: con las
+       diez a la vista no se leia un recorrido, se leia una grilla que cambiaba
+       de tono. */
 
-    border-color: color-mix(
+    /* El doble de rapido que su tramo: el nodo termina de entrar en la primera
+       mitad y recien despues arranca el vertice que sale de el. Ese huequito
+       es lo que hace que se lean como pasos sueltos y no como una sola cosa
+       creciendo sin parar. */
+    --entrada: clamp(0, calc(var(--paso, 0) * 2), 1);
+
+    /* El color llega saturado con el frente del camino y se apaga a tinta
+       cuando el recorrido sigue. Hay color todo el tiempo, pero nunca diez
+       a la vez. */
+    --viajero: color-mix(
       in srgb,
-      var(--color-surface-3),
-      var(--color-ink-strong) calc(var(--encendido) * 100%)
+      var(--tono),
+      var(--color-ink-strong) calc(var(--estela, 0) * 100%)
+    );
+
+    opacity: var(--entrada);
+    /* Entra apenas achicado. Mas que esto se pelea con el grid: el nodo se ve
+       moverse dentro de su celda en vez de aparecer en ella. */
+    scale: calc(0.94 + var(--entrada) * 0.06);
+
+    border-color: var(--viajero);
+    /* Un lavado de color que se va con la estela, para que el nodo recien
+       llegado tenga cuerpo y no solo un borde de color. */
+    background: color-mix(
+      in srgb,
+      var(--color-surface),
+      var(--tono) calc((1 - var(--estela, 0)) * 8%)
     );
   }
 
   .proceso-n {
-    color: color-mix(
-      in srgb,
-      var(--color-surface-3),
-      var(--color-ink-muted) calc(var(--encendido) * 100%)
-    );
+    color: var(--viajero);
   }
 
   .proceso-nombre {
     font-size: clamp(0.95rem, 1.25vw, 1.2rem);
-    color: color-mix(
-      in srgb,
-      var(--color-ink-muted),
-      var(--color-ink-strong) calc(var(--encendido) * 100%)
-    );
+    color: var(--color-ink-strong);
   }
 </style>

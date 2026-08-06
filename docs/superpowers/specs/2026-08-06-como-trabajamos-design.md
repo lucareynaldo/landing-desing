@@ -140,10 +140,34 @@ es el lado por el que entra la línea:
 | izquierda | `var(--local) 1` | `right center` |
 | abajo | `1 var(--local)` | `center top` |
 
-**Nodos.** Interpolan color con `color-mix`: borde de `--color-surface-3` a
-`--color-ink-strong`, texto de `--color-ink-muted` a `--color-ink-strong`. La
-rampa del nodo va tres veces más rápida que su tramo (`clamp(0, local * 3, 1)`)
-para que se encienda con decisión en vez de teñirse despacio.
+**Nodos.** Aparecen: opacidad de 0 a 1 y escala de 0.94 a 1. La rampa va al
+doble de velocidad que su tramo (`clamp(0, paso * 2, 1)`), así el nodo termina
+de entrar en la primera mitad y recién después arranca el vértice que sale de
+él. Ese hueco es lo que hace que se lean como pasos sueltos.
+
+> Revisión posterior a la primera implementación. El diseño original decía que
+> los nodos se **teñían** de gris a tinta, con las diez cajas visibles desde el
+> principio. No funcionaba: con las diez a la vista no se leía un recorrido, se
+> leía una grilla que cambiaba de tono. Un nodo que todavía no llegó no tiene
+> que estar ahí.
+
+**Color.** Cada etapa tiene su color (`PALETA` en `ComoTrabajamos.astro`), y el
+tramo que sale de un nodo lleva el mismo, así el color se arrastra detrás del
+frente y la etapa siguiente entra con uno nuevo.
+
+El color no se acumula: **viaja**. Cada elemento se apaga a `--color-ink-strong`
+tres eslabones después de llegar, vía `--estela`. Sin eso, al final del scroll
+habría diez colores prendidos a la vez y la sección se comería al resto de la
+página. Es el mismo criterio que el rotador de "Qué hacemos", que también cicla
+colores de a uno.
+
+Los diez van de frío a cálido — el recorrido sube de temperatura hacia la
+entrega — y abren y cierran en el violeta de la marca. El nodo recién llegado
+suma un lavado del 8% de su color en el fondo, para tener cuerpo y no solo un
+borde de color.
+
+Los vértices son de 2px y no de 1: a un pixel el color casi no se ve y el tramo
+queda como una línea gris con una idea de color.
 
 **Bloque de contacto.** Índice 19, así que se enciende último, después de que la
 línea llegó a `Entrega final`. Tratamiento distinto al de un nodo porque es un

@@ -1,0 +1,102 @@
+---
+// CTA final + footer en un solo bloque negro.
+// Composicion tomada de sethlukin.com (display gigante, dos botones outline,
+// metadata en las cuatro esquinas), pero renderizada con NUESTRO sistema
+// tipografico para que no se lea como un injerto.
+//
+// El fondo es negro plano por decision del cliente. El espacio esta preparado
+// para meter algo detras mas adelante (ver capa .footer-bg mas abajo).
+
+// TODO placeholder: reemplazar por los datos reales del estudio
+const EMAIL = "hola@estudio.com";
+const SOCIAL = "instagram.com/estudio";
+const CITY = "Buenos Aires, AR";
+const UPDATED = "Agosto 2026";
+---
+
+<footer
+  class="fixed inset-x-0 bottom-0 top-0 z-0 flex h-[100svh] flex-col justify-between overflow-hidden bg-void px-6 py-6 text-surface md:px-10 md:py-8"
+  aria-labelledby="cta-title"
+>
+  {/* Capa reservada para el fondo del CTA. Hoy negro plano. */}
+  <div class="footer-bg pointer-events-none absolute inset-0" aria-hidden="true"></div>
+
+  {/* --- Esquinas superiores --- */}
+  <div class="relative flex items-start justify-between">
+    <a
+      href={`mailto:${EMAIL}`}
+      class="type-meta transition-colors duration-(--duration-fast) ease-(--ease-inout) hover:text-ink-muted"
+    >
+      {EMAIL}
+    </a>
+    <a
+      href={`https://${SOCIAL}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      class="type-meta transition-colors duration-(--duration-fast) ease-(--ease-inout) hover:text-ink-muted"
+    >
+      {SOCIAL}
+    </a>
+  </div>
+
+  {/* --- Nucleo del CTA --- */}
+  <div class="relative">
+    {/*
+      Switzer es mas ancha que la PP Neue Montreal de sethlukin, asi que el
+      13.4vw medido en el original desborda. 9.6vw es el equivalente optico
+      para que "CONSTRUYAMOS" (la linea larga) entre dentro del padding.
+    */}
+    <h2 id="cta-title" class="type-shout text-[11.5vw] md:text-[9.6vw]">
+      <span class="block">Construyamos</span>
+      <span class="block text-right">algo serio</span>
+    </h2>
+
+    <div class="mt-8 flex flex-wrap justify-end gap-3 md:mt-10 md:gap-4">
+      <a
+        href={`mailto:${EMAIL}`}
+        class="group inline-flex items-center gap-3 rounded-full border border-surface/40 px-6 py-3 text-sm font-bold uppercase tracking-[-0.02em] transition-colors duration-(--duration-base) ease-(--ease-inout) hover:border-surface hover:bg-surface hover:text-void md:px-8 md:py-4 md:text-base"
+      >
+        Empezar un proyecto
+        <span
+          class="transition-transform duration-(--duration-base) ease-(--ease-out) group-hover:translate-x-1"
+          aria-hidden="true">→</span
+        >
+      </a>
+      <a
+        href={`mailto:${EMAIL}`}
+        class="inline-flex items-center gap-3 rounded-full border border-surface/40 px-6 py-3 text-sm font-bold uppercase tracking-[-0.02em] transition-colors duration-(--duration-base) ease-(--ease-inout) hover:border-surface hover:bg-surface hover:text-void md:px-8 md:py-4 md:text-base"
+      >
+        Hablemos
+      </a>
+    </div>
+  </div>
+
+  {/* --- Esquinas inferiores --- */}
+  <div class="relative flex items-end justify-between">
+    <p class="type-meta">
+      {CITY}<br />
+      <span data-clock aria-live="off">--:--</span>
+    </p>
+    <p class="type-meta text-right">
+      Última actualización<br />
+      {UPDATED}
+    </p>
+  </div>
+</footer>
+
+<script>
+  // Reloj en vivo. sethlukin tiene un componente Framer dedicado a esto;
+  // en plano son seis lineas.
+  const el = document.querySelector<HTMLElement>("[data-clock]");
+  if (el) {
+    const tick = () => {
+      el.textContent = new Date().toLocaleTimeString("es-AR", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      });
+    };
+    tick();
+    setInterval(tick, 1000 * 15);
+  }
+</script>

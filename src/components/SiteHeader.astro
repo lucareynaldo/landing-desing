@@ -1,0 +1,80 @@
+---
+// Header propio, en el idioma de readymag: pastillas flotantes,
+// redondeado total, fondo translucido. No copia ninguno en particular.
+const NAV = [
+  { label: "Trabajos", href: "#trabajos" },
+  { label: "Qué hacemos", href: "#que-hacemos" },
+  { label: "Clientes", href: "#clientes" },
+];
+---
+
+{/*
+  Sticky, no fixed: al estar dentro de la lamina de contenido, el header se
+  va con ella cuando el footer se revela. Si fuera fixed quedaria flotando
+  encima del bloque negro. Cero JS.
+*/}
+<header
+  class="site-header pointer-events-none sticky top-0 z-50 px-4 py-4 transition-[background-color,backdrop-filter] duration-(--duration-base) ease-(--ease-inout) md:px-6 md:py-5"
+  data-header
+>
+  <div class="pointer-events-auto mx-auto flex max-w-[1400px] items-center justify-between gap-4">
+    <a
+      href="/"
+      class="grid size-11 place-items-center rounded-full bg-ink-strong text-surface transition-transform duration-(--duration-base) ease-(--ease-out) hover:scale-105"
+      aria-label="Inicio"
+    >
+      <span class="type-meta text-[0.7rem] leading-none">E</span>
+    </a>
+
+    <nav class="hidden items-center gap-1 rounded-full bg-surface/80 p-1 backdrop-blur-md md:flex">
+      {
+        NAV.map((item) => (
+          <a
+            href={item.href}
+            class="rounded-full px-4 py-2 text-sm font-medium tracking-[-0.011em] text-ink transition-colors duration-(--duration-base) ease-(--ease-inout) hover:bg-surface-3"
+          >
+            {item.label}
+          </a>
+        ))
+      }
+    </nav>
+
+    <a
+      href="#contacto"
+      class="rounded-full bg-accent-warm px-5 py-2.5 text-sm font-bold tracking-[-0.011em] text-surface transition-transform duration-(--duration-base) ease-(--ease-out) hover:scale-105"
+    >
+      Hablemos
+    </a>
+  </div>
+</header>
+
+<style>
+  /* Transparente arriba de todo; con fondo apenas empieza a pasar contenido
+     por detras, si no el logo se superpone al texto de las secciones. */
+  .site-header.pegado {
+    background-color: color-mix(in srgb, var(--color-surface) 82%, transparent);
+    backdrop-filter: blur(12px);
+  }
+</style>
+
+<script>
+  const header = document.querySelector<HTMLElement>("[data-header]");
+  if (header) {
+    let pendiente = false;
+    const evaluar = () => {
+      pendiente = false;
+      header.classList.toggle("pegado", window.scrollY > 24);
+    };
+    window.addEventListener(
+      "scroll",
+      () => {
+        if (!pendiente) {
+          pendiente = true;
+          requestAnimationFrame(evaluar);
+        }
+      },
+      { passive: true },
+    );
+    evaluar();
+  }
+</script>

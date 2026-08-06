@@ -1,0 +1,209 @@
+---
+// Tira de logos con la magnificacion "montaña" de teamworkgraph: el item
+// bajo el cursor crece y los vecinos lo acompañan con una caida gaussiana,
+// de modo que el conjunto forma una loma en vez de un salto seco.
+//
+// Sobre el rendimiento, que era el problema de la version anterior:
+//  - una sola pasada de rAF maneja el desplazamiento Y la escala
+//  - las posiciones se calculan ANALITICAMENTE (paso fijo conocido), asi que
+//    no hay un solo getBoundingClientRect dentro del loop -> cero reflow
+//  - el loop se detiene solo cuando la tira sale del viewport
+//  - unica propiedad tocada por frame: transform
+
+// TODO placeholder: cada caja espera el SVG del logo del cliente.
+const LOGOS = [
+  "Café Mora", "Lume", "Estudio Vera", "Norte", "Rama", "Solaz",
+  "Ancla", "Bruma", "Tinta", "Ruta", "Pauna", "Cardume",
+  "Vidrio", "Once", "Sal", "Mora",
+];
+
+const ITEM = 88; // lado de la caja en px
+const GAP = 10;
+const track = [...LOGOS, ...LOGOS]; // duplicado para el bucle
+---
+
+<section id="clientes" class="relative pb-16 pt-24 md:pb-20 md:pt-32">
+  <header class="mx-auto mb-10 max-w-[1400px] px-6 md:mb-14 md:px-10">
+    <p class="type-meta text-ink-muted">Confiaron en nosotros</p>
+    <h2 class="type-display mt-4 max-w-[20ch] text-[clamp(1.75rem,4vw,3.25rem)] text-ink-strong">
+      Marcas que ya se parecen a sí mismas
+    </h2>
+  </header>
+
+  <div
+    class="logos-viewport relative overflow-hidden"
+    data-logos
+    data-item={ITEM}
+    data-gap={GAP}
+    data-cantidad={LOGOS.length}
+  >
+    <div class="logos-track flex w-max items-center" data-track style={`gap:${GAP}px`}>
+      {
+        track.map((nombre, i) => (
+          <div
+            class="logo-caja grid shrink-0 place-items-center rounded-[22%] bg-white ring-1 ring-ink/10"
+            style={`width:${ITEM}px; height:${ITEM}px;`}
+            title={nombre}
+            aria-hidden={i >= LOGOS.length ? "true" : undefined}
+          >
+            {/* Reemplazar por <img src="/logos/x.svg"> o el SVG inline */}
+            <span class="type-meta select-none text-[0.55rem] text-ink-muted">
+              {nombre}
+            </span>
+          </div>
+        ))
+      }
+    </div>
+
+    {/* Desvanecido en los bordes */}
+    <div
+      class="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,var(--color-surface),transparent_10%,transparent_90%,var(--color-surface))]"
+    >
+    </div>
+  </div>
+</section>
+
+<style>
+  /* Alto fijo: da lugar al item mas grande sin que la seccion salte */
+  .logos-viewport {
+    padding-block: 42px;
+  }
+  .logos-track {
+    will-change: transform;
+  }
+  .logo-caja {
+    transform-origin: 50% 50%;
+    box-shadow: 0 2px 10px rgb(0 0 0 / 0.05);
+
+    /* La caja se mantiene en su propia capa de composicion. Sin esto el
+       contenido se re-rasteriza en cada frame al cambiar la escala, y el
+       hinting de la tipografia engancha la linea base a la grilla de
+       pixeles: el texto de adentro salta aunque la caja no se mueva. */
+    will-change: transform;
+    backface-visibility: hidden;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .logos-track {
+      transform: none !important;
+    }
+    .logos-viewport {
+      overflow-x: auto;
+    }
+  }
+</style>
+
+<script>
+  const viewport = document.querySelector<HTMLElement>("[data-logos]");
+  const track = viewport?.querySelector<HTMLElement>("[data-track]");
+
+  if (viewport && track && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    const ITEM = Number(viewport.dataset.item);
+    const GAP = Number(viewport.dataset.gap);
+    const N = Number(viewport.dataset.cantidad);
+    const PASO = ITEM + GAP;
+    const CICLO = N * PASO; // ancho de un set completo
+    const cajas = Array.from(track.children) as HTMLElement[];
+
+    const AMPLITUD = 0.85; // cuanto crece el item bajo el cursor
+    const SIGMA = 115; // ancho de la loma en px
+    const VELOCIDAD = 26; // px por segundo
+
+    let offset = 0;
+    let punteroX = -9999;
+    let intensidad = 0; // 0 sin cursor, 1 con cursor. Se interpola.
+    let objetivo = 0;
+    let izquierda = 0;
+    let corriendo = false;
+    let ultimo = 0;
+
+    // Ultimo valor escrito por caja: no se toca el DOM si no cambio nada.
+    const escalaPrev = new Float64Array(cajas.length);
+    const zPrev = new Int32Array(cajas.length);
+    escalaPrev.fill(1);
+
+    const medir = () => {
+      izquierda = viewport.getBoundingClientRect().left;
+    };
+
+    const frame = (t: number) => {
+      if (!corriendo) return;
+      const dt = ultimo ? Math.min(0.05, (t - ultimo) / 1000) : 0;
+      ultimo = t;
+
+      // Avance constante: el hover NO altera la velocidad, solo la escala.
+      offset -= VELOCIDAD * dt;
+      if (offset <= -CICLO) offset += CICLO;
+      track.style.transform = `translate3d(${offset}px,0,0)`;
+
+      // Interpolacion suave de la intensidad al entrar/salir el cursor
+      intensidad += (objetivo - intensidad) * Math.min(1, dt * 9);
+
+      // Escala por caja. Todo analitico: ni una lectura del layout.
+      const relX = punteroX - izquierda;
+      for (let i = 0; i < cajas.length; i++) {
+        let escala = 1;
+        if (intensidad > 0.002) {
+          const centro = offset + i * PASO + ITEM / 2;
+          const d = (relX - centro) / SIGMA;
+          const bruto = 1 + AMPLITUD * intensidad * Math.exp(-d * d);
+
+          // Cuantizacion a alto PAR. La caja crece desde su centro, asi que
+          // del centro a cada borde hay (ITEM * escala) / 2. Con un alto
+          // fraccionario esa mitad cae en medio pixel y el navegador redondea
+          // el borde de arriba y el de abajo para lados distintos segun el
+          // frame: eso es el temblor de 1px. Forzando alto par, la mitad es
+          // entera y los dos bordes caen siempre en la misma linea.
+          escala = (Math.round((ITEM * bruto) / 2) * 2) / ITEM;
+        }
+
+        const caja = cajas[i];
+        // Escribir solo si cambio: evita invalidar estilo 32 veces por frame.
+        if (escala !== escalaPrev[i]) {
+          caja.style.transform = `scale(${escala})`;
+          escalaPrev[i] = escala;
+        }
+        // z-index en escalones gruesos. Antes se reescribia cada frame con
+        // Math.round(escala * 100), lo que recreaba el contexto de apilado
+        // sin parar y forzaba repintados.
+        const z = escala > 1.01 ? Math.round(escala * 10) : 0;
+        if (z !== zPrev[i]) {
+          caja.style.zIndex = z ? String(z) : "";
+          zPrev[i] = z;
+        }
+      }
+
+      requestAnimationFrame(frame);
+    };
+
+    const arrancar = () => {
+      if (corriendo) return;
+      corriendo = true;
+      ultimo = 0;
+      requestAnimationFrame(frame);
+    };
+    const parar = () => {
+      corriendo = false;
+    };
+
+    viewport.addEventListener(
+      "pointermove",
+      (e) => {
+        punteroX = e.clientX;
+        objetivo = 1;
+      },
+      { passive: true },
+    );
+    viewport.addEventListener("pointerleave", () => {
+      objetivo = 0;
+    });
+
+    // El loop solo corre mientras la tira se ve
+    new IntersectionObserver((entradas) => {
+      entradas[0].isIntersecting ? arrancar() : parar();
+    }).observe(viewport);
+
+    window.addEventListener("resize", medir, { passive: true });
+    medir();
+  }
+</script>

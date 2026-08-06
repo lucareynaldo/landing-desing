@@ -1,0 +1,143 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------
+   Switzer — grotesca suiza, sustituto libre de Theinhardt (Optimo),
+   la display de readymag. ITF Free Font License (public/fonts/).
+   Variable 100–900 en un solo archivo de 43KB.
+---------------------------------------------------------------- */
+@font-face {
+  font-family: "Switzer";
+  src: url("/fonts/Switzer-Variable.woff2") format("woff2-variations");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@theme {
+  /* --- Color. Medido de readymag.com --- */
+  --color-ink: #282828;        /* texto por defecto. NO negro puro */
+  --color-ink-strong: #000000; /* titulares */
+  --color-ink-muted: #808080;
+  --color-ink-soft: #444444;
+
+  --color-surface: #ffffff;    /* la pagina es blanca */
+  --color-surface-2: #f4f4f4;
+  --color-surface-3: #e7e7e7;
+  --color-sheet: #eeeeee;      /* gris de la lamina de sethlukin */
+  --color-void: #000000;       /* footer */
+
+  --color-accent: #8800ff;     /* violeta readymag */
+  --color-accent-warm: #ff5000;/* naranja readymag */
+
+  /* --- Easing. Valores literales del JSON de Framer de sethlukin --- */
+  --ease-inout: cubic-bezier(0.44, 0, 0.56, 1);   /* general */
+  --ease-in:    cubic-bezier(0.5, 0, 0.88, 0.77); /* salidas */
+  --ease-out:   cubic-bezier(0, 0.72, 0.56, 1);   /* entradas */
+
+  /* --- Duracion. sethlukin usa 400ms para absolutamente todo --- */
+  --duration-fast: 150ms;
+  --duration-base: 400ms;
+  --duration-slow: 500ms;
+
+  /* --- Tipografia --- */
+  --font-sans: "Switzer", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  /* Radios. sethlukin usa 64px en la lamina */
+  --radius-sheet: 64px;
+}
+
+/* ---------------------------------------------------------------
+   Base
+---------------------------------------------------------------- */
+:root {
+  color-scheme: light;
+  background-color: var(--color-void); /* el footer asoma por detras */
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  color: var(--color-ink);
+  background-color: transparent;
+  font-synthesis-weight: none;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Lenis controla el scroll; la barra nativa se oculta como en sethlukin */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+.lenis.lenis-scrolling iframe {
+  pointer-events: none;
+}
+
+::-webkit-scrollbar {
+  display: none;
+}
+html {
+  scrollbar-width: none;
+}
+
+/* ---------------------------------------------------------------
+   Utilidades tipograficas.
+   Estos dos ratios son LA firma visual de las referencias:
+   readymag  -> tracking -0.05em con line-height 1.0
+   sethlukin -> line-height 0.8 con tracking -0.02em en display
+---------------------------------------------------------------- */
+@utility type-display {
+  font-weight: 500;
+  letter-spacing: -0.05em;
+  line-height: 1;
+  text-wrap: balance;
+}
+
+@utility type-shout {
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: -0.02em;
+  line-height: 0.8;
+}
+
+@utility type-body {
+  font-weight: 400;
+  letter-spacing: -0.011em;
+  line-height: 1.45;
+}
+
+@utility type-meta {
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+/* ---------------------------------------------------------------
+   Accesibilidad
+---------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

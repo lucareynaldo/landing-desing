@@ -1,0 +1,82 @@
+---
+// Fila de marquee horizontal. CSS puro: la pista se duplica y se desplaza
+// exactamente -50%, con lo que el bucle es continuo sin JS ni saltos.
+//
+// Los tiles son TODOS de la misma proporcion, como en readymag: la variacion
+// de tamaño viene de la fila, no de la pieza. Eso es lo que hace que se lea
+// como un sistema y no como un collage.
+
+interface Props {
+  items: { id: string; label: string; tone: string }[];
+  direction?: "left" | "right";
+  duration?: number; // segundos por vuelta completa
+  height: string; // alto de la fila; lo decide el hero
+}
+
+const { items, direction = "left", duration = 60, height } = Astro.props;
+const track = [...items, ...items]; // duplicado para el bucle
+---
+
+<div class="marquee group relative overflow-hidden">
+  <div
+    class="marquee-track flex w-max gap-3 md:gap-4"
+    style={`--marquee-duration:${duration}s; --marquee-direction:${
+      direction === "left" ? "normal" : "reverse"
+    };`}
+  >
+    {
+      track.map((item, i) => (
+        <figure
+          class="marquee-item relative m-0 shrink-0 overflow-hidden rounded-2xl"
+          style={`aspect-ratio: 16 / 10; height:${height}; background-color:${item.tone};`}
+          aria-hidden={i >= items.length ? "true" : undefined}
+        >
+          {/* Placeholder hasta que el diseñador entregue los assets */}
+          <figcaption class="type-meta absolute bottom-2.5 left-2.5 rounded-full bg-surface/75 px-2 py-1 text-[0.6rem] text-ink backdrop-blur-sm">
+            {item.label}
+          </figcaption>
+        </figure>
+      ))
+    }
+  </div>
+</div>
+
+<style>
+  @keyframes marquee-scroll {
+    to {
+      transform: translateX(-50%);
+    }
+  }
+
+  .marquee-track {
+    animation: marquee-scroll var(--marquee-duration) linear infinite;
+    animation-direction: var(--marquee-direction);
+    will-change: transform;
+  }
+
+  .marquee:hover .marquee-track {
+    animation-play-state: paused;
+  }
+
+  /* Hover de imagen medido en readymag: transition filter 100ms ease */
+  .marquee-item {
+    filter: saturate(1);
+    transition: filter 100ms ease;
+    cursor: pointer;
+  }
+  .marquee:hover .marquee-item {
+    filter: saturate(0.15);
+  }
+  .marquee .marquee-item:hover {
+    filter: saturate(1);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .marquee-track {
+      animation: none;
+    }
+    .marquee {
+      overflow-x: auto;
+    }
+  }
+</style>

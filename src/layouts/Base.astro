@@ -1,0 +1,77 @@
+---
+import "../styles/global.css";
+import SiteFooter from "../components/SiteFooter.astro";
+import SiteHeader from "../components/SiteHeader.astro";
+
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const {
+  title,
+  description = "Estudio de diseño gráfico. Construimos marcas coherentes y serias.",
+} = Astro.props;
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="generator" content={Astro.generator} />
+    <meta name="description" content={description} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link
+      rel="preload"
+      href="/fonts/Switzer-Variable.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <title>{title}</title>
+  </head>
+
+  <body>
+    <!--
+      Reveal del footer, mecanismo verificado en sethlukin.com:
+      el footer NO entra al scrollear. Ya esta ahi, fijo al fondo en z-0,
+      y la lamina de contenido (z-2, opaca) se desliza hacia arriba
+      destapandolo. El margin-bottom de la lamina es el que crea el
+      espacio de scroll necesario para el revelado. CSS puro.
+    -->
+    <div
+      class="relative z-[2] mb-[100svh] rounded-b-[var(--radius-sheet)] bg-surface pb-16 md:pb-24"
+    >
+      <SiteHeader />
+      <main>
+        <slot />
+      </main>
+    </div>
+
+    <SiteFooter />
+
+    <script>
+      import Lenis from "lenis";
+
+      // sethlukin corre Lenis con duration 1.0 (su control "intensity: 10" / 10)
+      const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+      if (!reduced.matches) {
+        const lenis = new Lenis({ duration: 1.0 });
+        const raf = (time: number) => {
+          lenis.raf(time);
+          requestAnimationFrame(raf);
+        };
+        requestAnimationFrame(raf);
+
+        // Cualquier contenedor con scroll propio queda fuera de Lenis
+        document.querySelectorAll("*").forEach((el) => {
+          if (getComputedStyle(el).overflowY === "auto") {
+            el.setAttribute("data-lenis-prevent", "true");
+          }
+        });
+      }
+    </script>
+  </body>
+</html>

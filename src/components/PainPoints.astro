@@ -1,0 +1,45 @@
+---
+import PainPoint from "./PainPoint.astro";
+
+// Por ahora se instancia un solo dolor, como acordamos. Agregar otro es
+// sumar un objeto a este array: la card ya es generica.
+const dolores = [
+  {
+    eyebrow: "El feed",
+    pain: "Cada publicación parece de una marca distinta",
+    solution:
+      "No es falta de ideas, es falta de sistema. Definimos una paleta, una retícula y una jerarquía tipográfica, y de golpe las mismas publicaciones se leen como una sola voz.",
+    // Feed roto: colores sin relacion entre si
+    before: [
+      "#ff2d55", "#00c2a8", "#ffcc00",
+      "#7b2fff", "#ff7a00", "#0066ff",
+      "#12d18e", "#ff4dd2", "#1a1a1a",
+    ],
+    // Mismo feed con sistema: una familia cromatica coherente
+    after: [
+      "#282828", "#e7e7e7", "#8800ff",
+      "#f4f4f4", "#282828", "#e7e7e7",
+      "#8800ff", "#e7e7e7", "#282828",
+    ],
+  },
+];
+---
+
+<section id="dolores" class="mx-auto max-w-[1400px] px-6 py-24 md:px-10 md:py-36">
+  {/*
+    El max-width va en el h2, NO en el header: la unidad `ch` se resuelve
+    contra el font-size del propio elemento. En el header (16px heredados)
+    24ch daban ~190px y estrangulaban el titular contra el borde izquierdo,
+    dejando medio ancho de pagina vacio.
+  */}
+  <header>
+    <p class="type-meta text-ink-muted">Probablemente te suene</p>
+    <h2 class="type-display mt-4 max-w-[18ch] text-[clamp(2rem,5vw,4rem)] text-ink-strong">
+      No es que diseñes mal. Es que nadie puso las reglas.
+    </h2>
+  </header>
+
+  <div class="mt-14 flex flex-col gap-8 md:mt-20">
+    {dolores.map((d) => <PainPoint {...d} />)}
+  </div>
+</section>

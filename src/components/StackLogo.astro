@@ -1,0 +1,106 @@
+---
+import type { Logo } from "../data/stack";
+
+// Fuente unica de verdad para CUALQUIER logo del stack.
+//
+// La caja es siempre la misma pieza: mismo redondeo, misma sombra, mismo
+// recorte, tamaño tomado de una escala cerrada. Lo unico que cambia es que
+// va adentro:
+//
+//   archivo -> el SVG de Adobe trae su propio fondo de color y llena la caja
+//              a sangre. El overflow-hidden le impone NUESTRO radio, asi se
+//              normalizan las esquinas de todos por igual.
+//              El scale-[1.09] no es decorativo: varios iconos de Adobe traen
+//              un marco dibujado en el borde del viewBox (stock.svg era
+//              literalmente "M0,0v234h240V0H0z M10,10h2..." -> dos subtrazados
+//              con relleno par-impar, o sea un borde de 10px). Agrandar un 9%
+//              y recortar con la caja se lo come, y en los iconos limpios el
+//              recorte es imperceptible porque su fondo ya llega al borde.
+//   glifo   -> el path monocromo va en BLANCO y el color de marca pasa a ser
+//              el fondo de la caja. Es la inversion respecto del SVG original,
+//              que viene pensado como glifo de color sobre fondo claro.
+
+export type TamanoLogo = "xs" | "sm" | "md" | "lg" | "xl";
+
+interface Props {
+  logo: Logo;
+  tamano?: TamanoLogo;
+  class?: string;
+  style?: string;
+}
+
+const { logo, tamano = "md", class: clase, style } = Astro.props;
+
+// Escala cerrada. No se pasan px sueltos desde afuera.
+const LADO: Record<TamanoLogo, number> = {
+  xs: 34,
+  sm: 42,
+  md: 50,
+  lg: 58,
+  xl: 66,
+};
+const lado = LADO[tamano];
+
+/** Luminancia relativa sRGB (WCAG). */
+function luminancia(hex: string): number {
+  const n = parseInt(hex.slice(1), 16);
+  const c = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => {
+    const s = v / 255;
+    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+}
+
+/** Oscurece mezclando con negro, para que el glifo blanco se lea. */
+function oscurecer(hex: string, factor: number): string {
+  const n = parseInt(hex.slice(1), 16);
+  const m = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) =>
+    Math.round(v * (1 - factor)),
+  );
+  return "#" + m.map((v) => v.toString(16).padStart(2, "0")).join("");
+}
+
+// Algunas marcas son muy claras (Sketch, GIMP). Sobre esas, el blanco no
+// contrasta, asi que se oscurece el fondo lo justo para que el glifo se lea.
+let fondo: string | undefined;
+if (logo.tipo === "glifo") {
+  const L = luminancia(logo.hex);
+  fondo = L > 0.5 ? oscurecer(logo.hex, 0.42) : L > 0.3 ? oscurecer(logo.hex, 0.2) : logo.hex;
+}
+---
+
+<span
+  class:list={["stack-logo grid shrink-0 place-items-center overflow-hidden rounded-[26%]", clase]}
+  style={`width:${lado}px; height:${lado}px;${fondo ? ` background-color:${fondo};` : ""}${style ? " " + style : ""}`}
+  title={logo.nombre}
+>
+  {
+    logo.tipo === "archivo" ? (
+      <img
+        src={logo.src}
+        alt=""
+        width={lado}
+        height={lado}
+        loading="lazy"
+        decoding="async"
+        class="size-full scale-[1.09] object-cover"
+      />
+    ) : (
+      <svg
+        viewBox="0 0 24 24"
+        width={Math.round(lado * 0.52)}
+        height={Math.round(lado * 0.52)}
+        fill="#ffffff"
+        aria-hidden="true"
+      >
+        <path d={logo.path} />
+      </svg>
+    )
+  }
+</span>
+
+<style>
+  .stack-logo {
+    box-shadow: 0 4px 14px rgb(0 0 0 / 0.1);
+  }
+</style>

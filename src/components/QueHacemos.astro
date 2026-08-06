@@ -1,0 +1,496 @@
+---
+import { ADOBE, OTROS } from "../data/stack";
+import StackLogo, { type TamanoLogo } from "./StackLogo.astro";
+
+// Campo de iconos + texto flotando en el centro. Sin card.
+//
+// Del original de teamworkgraph se toma SOLO el mecanismo:
+// - nodos que entran con opacity + scale(0.4 -> 1) escalonado  [medido]
+// - sin lineas de conexion, sin reaccion al cursor  [decision del cliente]
+//
+// Las posiciones NO estan escritas a mano: se generan en build con un PRNG
+// sembrado, asi que son estables entre builds pero se redistribuyen solas al
+// agregar o sacar logos. El muestreo rechaza cualquier punto que caiga en la
+// elipse central (donde vive el texto) o demasiado cerca de otro nodo.
+
+const SERVICIOS = [
+  { texto: "identidad de marca", color: "#8800ff" },
+  { texto: "diseño web", color: "#0055ff" },
+  { texto: "diseño UX/UI", color: "#00a3b5" },
+  { texto: "dirección de arte", color: "#ff5000" },
+  { texto: "motion design", color: "#e6007a" },
+  { texto: "sistemas de diseño", color: "#12b76a" },
+  { texto: "packaging", color: "#f79009" },
+  { texto: "editorial", color: "#282828" },
+  { texto: "redes sociales", color: "#6941c6" },
+  { texto: "ilustración", color: "#ff2d55" },
+];
+
+// Adobe primero: se lleva los tamaños grandes porque es el nucleo del stack.
+const LOGOS = [...ADOBE, ...OTROS];
+
+// --- Generador determinista de posiciones -------------------------------
+function mulberry32(semilla: number) {
+  return () => {
+    semilla |= 0;
+    semilla = (semilla + 0x6d2b79f5) | 0;
+    let t = Math.imul(semilla ^ (semilla >>> 15), 1 | semilla);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const rnd = mulberry32(20260805);
+const RX = 33; // semieje X de la zona despejada, en %
+const RY = 31; // semieje Y
+const ASPECTO = 2; // 1% en X pesa ~2x que 1% en Y (contenedor apaisado)
+
+interface Nodo {
+  x: number;
+  y: number;
+  tamano: TamanoLogo;
+  d: number;
+  borde: boolean;
+}
+
+// Escala cerrada, no px sueltos. Adobe -> los pasos grandes; el resto, medios.
+const ESCALA: TamanoLogo[] = ["xl", "lg", "md", "sm", "xs"];
+
+// Muestreo best-candidate (Mitchell). El muestreo por rechazo que habia antes
+// es grumoso por definicion: acepta el PRIMER punto que no choque, aunque
+// quede pegado al vecino, y eso deja racimos y huecos. Aca cada nodo genera
+// N candidatos y se queda con el que este MAS LEJOS del vecino mas cercano,
+// que es lo que produce ruido azul: separacion pareja sin verse en grilla.
+const CANDIDATOS = 40;
+
+const puestos: Nodo[] = [];
+for (let i = 0; i < LOGOS.length; i++) {
+  const paso = Math.min(ESCALA.length - 1, Math.floor((i / LOGOS.length) * 4 + rnd() * 1.4));
+  const tamano = ESCALA[paso];
+
+  let mejor: { x: number; y: number } | null = null;
+  let mejorDist = -1;
+
+  for (let k = 0; k < CANDIDATOS; k++) {
+    const x = 3 + rnd() * 94;
+    const y = 5 + rnd() * 90;
+    // descartar el hueco central donde vive el texto
+    const ex = (x - 50) / RX;
+    const ey = (y - 50) / RY;
+    if (ex * ex + ey * ey < 1) continue;
+
+    // distancia al vecino mas cercano, corregida por el aspecto apaisado
+    let d = Infinity;
+    for (const p of puestos) {
+      const dx = (p.x - x) * ASPECTO;
+      const dy = p.y - y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < d) d = dist;
+    }
+    if (d > mejorDist) {
+      mejorDist = d;
+      mejor = { x, y };
+    }
+  }
+
+  if (mejor) {
+    puestos.push({ ...mejor, tamano, d: i * 34, borde: Math.abs(mejor.x - 50) < 30 });
+  }
+}
+
+const NODOS = puestos.map((p, i) => ({ ...p, logo: LOGOS[i] }));
+---
+
+<section
+  id="que-hacemos"
+  class="relative isolate flex min-h-[92vh] items-center overflow-hidden px-6 py-24 md:px-10 md:py-32"
+  data-icon-field
+>
+  {/* --- Campo de logos --- */}
+  <div class="pointer-events-none absolute inset-0" aria-hidden="true">
+    {
+      NODOS.map((n) => (
+        <StackLogo
+          logo={n.logo}
+          tamano={n.tamano}
+          class:list={[
+            "icon-node absolute cursor-grab touch-none select-none [pointer-events:auto]",
+            n.borde && "hidden md:grid",
+          ]}
+          style={`left:${n.x.toFixed(2)}%; top:${n.y.toFixed(2)}%; --delay:${n.d}ms;`}
+        />
+      ))
+    }
+    {/*
+      Despeja el centro para que el texto siempre gane. La elipse acompaña a
+      RX/RY del generador: si se agranda de mas, alcanza a los nodos de las
+      bandas y los deja lavados a medias, que se lee como bug y no como
+      intencion.
+    */}
+    <div
+      class="absolute inset-0 bg-[radial-gradient(ellipse_33%_31%_at_50%_50%,var(--color-surface)_58%,transparent_88%)]"
+    >
+    </div>
+  </div>
+
+  {/* --- Texto central --- */}
+  <div class="relative mx-auto flex max-w-[900px] flex-col items-center text-center">
+    <h2 class="type-display text-[clamp(2.5rem,7vw,6rem)] text-ink-strong">Hacemos</h2>
+
+    <p
+      class="type-display mt-2 min-h-[1.15em] text-[clamp(1.75rem,5vw,4.25rem)]"
+      style={`color:${SERVICIOS[0].color}`}
+      data-rotador
+      aria-live="polite"
+    >
+      {SERVICIOS[0].texto}
+    </p>
+
+    <a
+      href="/trabajos"
+      class="group mt-10 inline-flex items-center gap-3 rounded-full border border-ink-strong bg-surface px-7 py-4 text-base font-bold tracking-[-0.011em] text-ink-strong transition-colors duration-(--duration-base) ease-(--ease-inout) hover:bg-ink-strong hover:text-surface md:text-lg"
+    >
+      Ver todo lo que hicimos
+      <span
+        class="transition-transform duration-(--duration-base) ease-(--ease-out) group-hover:translate-x-1"
+        aria-hidden="true">→</span
+      >
+    </a>
+  </div>
+</section>
+
+<script is:inline define:vars={{ SERVICIOS }}>
+  (() => {
+    const seccion = document.querySelector("[data-icon-field]");
+    const rotador = seccion?.querySelector("[data-rotador]");
+    if (!seccion || !rotador) return;
+
+    const quieto = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    // --- Entrada de los nodos: opacity + scale(0.4 -> 1), escalonada ---
+    const io = new IntersectionObserver(
+      (entradas) => {
+        entradas.forEach((e) => {
+          if (!e.isIntersecting) return;
+          seccion.classList.add("nodos-visibles");
+          io.disconnect();
+          // La fisica arranca recien cuando termino de entrar el ultimo nodo,
+          // si no pelearia contra la transicion CSS de la entrada.
+          if (!quieto) setTimeout(iniciarFisica, 1500);
+        });
+      },
+      { threshold: 0.2 },
+    );
+    io.observe(seccion);
+
+    // --- Rotacion del servicio, cada uno con su color ---
+    if (!quieto) {
+      let i = 0;
+      setInterval(() => {
+        i = (i + 1) % SERVICIOS.length;
+        rotador.classList.add("saliendo");
+        setTimeout(() => {
+          rotador.textContent = SERVICIOS[i].texto;
+          rotador.style.color = SERVICIOS[i].color;
+          rotador.classList.remove("saliendo");
+        }, 260);
+      }, 2600);
+    }
+
+    // ------------------------------------------------------------------
+    // Fisica del campo de logos
+    //
+    // Cada nodo es una masa atada a su posicion de origen por un resorte
+    // amortiguado. Sobre ese resorte se suman tres cosas:
+    //   1. deriva ociosa  -> un objetivo que orbita lento, para que nada
+    //                        quede completamente inmovil
+    //   2. empuje         -> el nodo que se esta arrastrando desplaza a los
+    //                        vecinos dentro de su radio de influencia
+    //   3. arrastre       -> mientras se agarra, el nodo sigue al puntero
+    //                        con un tope de distancia desde su origen
+    //
+    // Al soltar no hay animacion de vuelta: simplemente se devuelve el nodo
+    // al resorte, y el resorte hace el trabajo. Por eso el retorno se siente
+    // elastico y no scripteado.
+    //
+    // El loop no lee layout: las posiciones de origen se miden una vez (y en
+    // cada resize) y despues solo se escriben transforms.
+    // ------------------------------------------------------------------
+    function iniciarFisica() {
+      // Sin arrastre en tactil: robaria el scroll de la pagina.
+      if (!matchMedia("(pointer: fine)").matches) return;
+
+      // Resorte: omega = sqrt(K) = 9.2 rad/s -> periodo ~0.68s, y
+      // zeta = AMORT / (2*sqrt(K)) = 0.49 -> subamortiguado, rebota una vez.
+      // Con K=150 el retorno tardaba ~110ms y se sentia seco, no elastico.
+      const K = 85; // rigidez del resorte
+      const AMORT = 9; // amortiguacion
+      const TOPE = 150; // asintota del elastico: nunca se llega, solo se tiende
+      const R_EMPUJE = 150; // radio de influencia del nodo arrastrado
+      const F_EMPUJE = 46; // desplazamiento maximo que provoca en un vecino
+      const ESCALA_HOVER = 1.4;
+
+      const els = Array.from(seccion.querySelectorAll(".icon-node"));
+      if (!els.length) return;
+
+      const nodos = els.map((el, i) => ({
+        el,
+        hx: 0,
+        hy: 0, // origen (centro), en px
+        ox: 0,
+        oy: 0, // desplazamiento actual
+        vx: 0,
+        vy: 0, // velocidad
+        ex: 0,
+        ey: 0, // empuje recibido este frame
+        escala: 1,
+        escalaObj: 1,
+        fase: i * 1.7,
+        amp: 3 + ((i * 7) % 5), // 3 a 7 px de deriva
+        w1: 0.16 + ((i * 3) % 7) * 0.012,
+        w2: 0.11 + ((i * 5) % 6) * 0.014,
+      }));
+
+      // hx/hy son offsetLeft/offsetTop: coordenadas relativas a la seccion.
+      // El puntero llega en clientX/clientY: coordenadas de viewport. Hay que
+      // tener la esquina de la seccion en viewport para pasar de un sistema al
+      // otro; sin eso el nodo salta justo el top de la seccion al agarrarlo.
+      let baseX = 0;
+      let baseY = 0;
+
+      const medirBase = () => {
+        const r = seccion.getBoundingClientRect();
+        baseX = r.left;
+        baseY = r.top;
+      };
+      const medirNodos = () => {
+        for (const n of nodos) {
+          n.hx = n.el.offsetLeft;
+          n.hy = n.el.offsetTop;
+        }
+      };
+      medirNodos();
+      medirBase();
+
+      let agarrado = null;
+      let punteroX = 0;
+      let punteroY = 0;
+      let asaX = 0;
+      let asaY = 0;
+      let corriendo = false;
+      let ultimo = 0;
+
+      const frame = (t) => {
+        if (!corriendo) return;
+        const dt = ultimo ? Math.min(0.032, (t - ultimo) / 1000) : 0.016;
+        ultimo = t;
+        const seg = t / 1000;
+
+        // --- empuje del nodo arrastrado sobre sus vecinos ---
+        for (const n of nodos) {
+          n.ex = 0;
+          n.ey = 0;
+        }
+        if (agarrado) {
+          const ax = agarrado.hx + agarrado.ox;
+          const ay = agarrado.hy + agarrado.oy;
+          for (const n of nodos) {
+            if (n === agarrado) continue;
+            const dx = n.hx + n.ox - ax;
+            const dy = n.hy + n.oy - ay;
+            const d = Math.hypot(dx, dy) || 1;
+            if (d >= R_EMPUJE) continue;
+            const fuerza = (1 - d / R_EMPUJE) ** 2 * F_EMPUJE;
+            n.ex = (dx / d) * fuerza;
+            n.ey = (dy / d) * fuerza;
+          }
+        }
+
+        for (const n of nodos) {
+          if (n === agarrado) {
+            // Desplazamiento pedido por el puntero, ya en el sistema de la
+            // seccion (de ahi el -baseX/-baseY).
+            let tx = punteroX - baseX - asaX - n.hx;
+            let ty = punteroY - baseY - asaY - n.hy;
+
+            // Resistencia elastica en vez de tope duro. tanh vale ~x cerca del
+            // origen (el nodo sigue al cursor 1:1, sin lag) y satura de forma
+            // asintotica en TOPE: cuanto mas lejos, mas cuesta, y nunca se
+            // llega al limite. Un clamp, en cambio, se sentia como un golpe.
+            const d = Math.hypot(tx, ty);
+            if (d > 0.01) {
+              const dLim = TOPE * Math.tanh(d / TOPE);
+              tx = (tx / d) * dLim;
+              ty = (ty / d) * dLim;
+            }
+            const k = Math.min(1, dt * 22);
+            n.vx = (tx - n.ox) / Math.max(dt, 0.001);
+            n.vy = (ty - n.oy) / Math.max(dt, 0.001);
+            n.ox += (tx - n.ox) * k;
+            n.oy += (ty - n.oy) * k;
+          } else {
+            // Resorte hacia origen + deriva + empuje
+            const objX = Math.sin(seg * n.w1 * 6.28 + n.fase) * n.amp + n.ex;
+            const objY = Math.cos(seg * n.w2 * 6.28 + n.fase * 1.3) * n.amp * 0.7 + n.ey;
+            n.vx += ((objX - n.ox) * K - n.vx * AMORT) * dt;
+            n.vy += ((objY - n.oy) * K - n.vy * AMORT) * dt;
+            n.ox += n.vx * dt;
+            n.oy += n.vy * dt;
+          }
+
+          n.escala += (n.escalaObj - n.escala) * Math.min(1, dt * 14);
+
+          n.el.style.transform =
+            `translate(-50%,-50%) translate3d(${n.ox.toFixed(2)}px,${n.oy.toFixed(2)}px,0)` +
+            ` scale(${n.escala.toFixed(3)})`;
+        }
+
+        requestAnimationFrame(frame);
+      };
+
+      const arrancar = () => {
+        if (corriendo) return;
+        corriendo = true;
+        ultimo = 0;
+        requestAnimationFrame(frame);
+      };
+      const parar = () => {
+        corriendo = false;
+      };
+
+      // --- interaccion ---
+      nodos.forEach((n) => {
+        n.el.addEventListener("pointerenter", () => {
+          if (!agarrado) n.escalaObj = ESCALA_HOVER;
+        });
+        n.el.addEventListener("pointerleave", () => {
+          if (agarrado !== n) n.escalaObj = 1;
+        });
+        n.el.addEventListener("pointerdown", (e) => {
+          e.preventDefault();
+          // El estado se arma ANTES de capturar el puntero: setPointerCapture
+          // tira NotFoundError si el pointerId ya no esta activo, y si eso
+          // pasara a mitad del handler el arrastre quedaria a medio inicializar
+          // (sin asa ni posicion de puntero) y el nodo saltaria.
+          agarrado = n;
+          n.escalaObj = ESCALA_HOVER;
+          medirBase();
+          punteroX = e.clientX;
+          punteroY = e.clientY;
+          // Asa: donde agarro el usuario DENTRO del nodo, para que no salte.
+          const r = n.el.getBoundingClientRect();
+          asaX = e.clientX - (r.left + r.width / 2);
+          asaY = e.clientY - (r.top + r.height / 2);
+          n.el.style.cursor = "grabbing";
+          n.el.style.zIndex = "20";
+          try {
+            n.el.setPointerCapture(e.pointerId);
+          } catch {
+            /* sin captura el arrastre igual funciona: pointermove va a window */
+          }
+        });
+      });
+
+      window.addEventListener(
+        "pointermove",
+        (e) => {
+          punteroX = e.clientX;
+          punteroY = e.clientY;
+        },
+        { passive: true },
+      );
+
+      const soltar = () => {
+        if (!agarrado) return;
+        // No hay animacion de vuelta: se devuelve al resorte y listo.
+        agarrado.escalaObj = 1;
+        agarrado.el.style.cursor = "";
+        agarrado.el.style.zIndex = "";
+        agarrado = null;
+      };
+      window.addEventListener("pointerup", soltar);
+      window.addEventListener("pointercancel", soltar);
+
+      window.addEventListener(
+        "resize",
+        () => {
+          medirNodos();
+          medirBase();
+        },
+        { passive: true },
+      );
+
+      // La esquina de la seccion se mueve con el scroll, asi que hay que
+      // refrescarla o el arrastre se desfasa si la pagina se mueve mientras
+      // se agarra un nodo. Una sola lectura, throttleada a un frame.
+      let pendienteBase = false;
+      window.addEventListener(
+        "scroll",
+        () => {
+          if (pendienteBase) return;
+          pendienteBase = true;
+          requestAnimationFrame(() => {
+            pendienteBase = false;
+            medirBase();
+          });
+        },
+        { passive: true },
+      );
+
+      // El loop solo corre mientras la seccion se ve
+      new IntersectionObserver((es) => {
+        es[0].isIntersecting ? arrancar() : parar();
+      }).observe(seccion);
+
+      seccion.classList.add("fisica-activa");
+    }
+  })();
+</script>
+
+<style>
+  /* Entrada medida en teamworkgraph.
+     :global porque .icon-node vive en el elemento raiz de StackLogo, que es
+     otro componente y por lo tanto queda fuera del scope de este archivo. */
+  :global(.icon-node) {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.4);
+    transition:
+      opacity var(--duration-base) var(--ease-out),
+      transform var(--duration-base) var(--ease-out);
+    transition-delay: var(--delay);
+  }
+  :global(.nodos-visibles .icon-node) {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+
+  /* Cuando la fisica toma el control escribe transform en cada frame, asi que
+     la transicion de la entrada tiene que salir del medio o pelearia contra
+     el loop y todo quedaria arrastrandose 400ms tarde. */
+  :global(.fisica-activa .icon-node) {
+    transition: opacity var(--duration-base) var(--ease-out);
+  }
+  :global(.fisica-activa .icon-node:active) {
+    cursor: grabbing;
+  }
+
+  /* Swap del servicio: sale hacia arriba, entra desde abajo */
+  [data-rotador] {
+    transition:
+      opacity 260ms var(--ease-in),
+      transform 260ms var(--ease-in),
+      color 260ms var(--ease-in);
+  }
+  [data-rotador].saliendo {
+    opacity: 0;
+    transform: translateY(-0.35em);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(.icon-node) {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+      transition: none;
+    }
+  }
+</style>

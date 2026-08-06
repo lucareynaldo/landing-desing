@@ -3,6 +3,7 @@ import "../styles/global.css";
 import SiteFooter from "../components/SiteFooter.astro";
 import SiteHeader from "../components/SiteHeader.astro";
 import TrabajoDetalle from "../components/TrabajoDetalle.astro";
+import Sonido from "../components/Sonido.astro";
 
 interface Props {
   title: string;
@@ -57,6 +58,9 @@ const {
       su z-index, y el detalle tiene que poder taparlo todo, footer incluido.
     */}
     <TrabajoDetalle />
+
+    {/* Todo el audio del sitio. Una sola instancia, engancha por delegacion. */}
+    <Sonido />
 
     <script>
       import Lenis from "lenis";

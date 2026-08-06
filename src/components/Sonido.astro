@@ -1,0 +1,136 @@
+---
+// Sonido de interfaz. Todo el audio del sitio vive aca y en ningun otro lado.
+//
+// Dos decisiones que explican la forma del archivo:
+//
+// 1. Se sintetiza, no se cargan archivos. Son ~20 lineas de Web Audio contra
+//    un fetch que puede llegar tarde justo en el primer click, que es cuando
+//    mas se nota. Cero bytes de red, cero latencia, y los sonidos quedan
+//    editables como numeros en vez de como assets.
+//
+// 2. Los disparadores son delegados en document, no cableados instancia por
+//    instancia. En el sitio no hay un componente Boton reutilizable: hay
+//    botones sueltos en cinco archivos, y ademas varios "botones" son <a>.
+//    Cablear cada uno significaria tocar cinco archivos hoy y olvidarse del
+//    sexto manana. Con delegacion, un boton nuevo suena sin hacer nada.
+//
+// La gramatica de la familia, para que lo que agreguemos despues pertenezca:
+//   - siempre onda sine y envolvente percusiva (ataque de 1-2ms)
+//   - glide de frecuencia = navegacion (algo se abre, algo se cierra)
+//     frecuencia fija    = accion puntual (algo se apreto)
+//   - cuanto mas seguido se puede disparar un sonido, mas bajo su pico
+---
+
+<script is:inline>
+  (() => {
+    // --- Presets -------------------------------------------------------
+    // desde/hasta: barrido de frecuencia en Hz (iguales = tono fijo)
+    // ataque: rampa lineal hasta el pico | caida: constante de tiempo
+    // cola: silencio de gracia antes de cortar el oscilador
+    // pico: amplitud maxima, de 0 a 1
+    const SONIDOS = {
+      // El par de la vista detalle. Suben y bajan porque acompañan un morph
+      // que tambien va y vuelve: son el mismo gesto traducido a audio.
+      abrir: { desde: 420, hasta: 760, ataque: 0.002, caida: 0.09, cola: 0.03, pico: 0.392 },
+      cerrar: { desde: 720, hasta: 360, ataque: 0.002, caida: 0.08, cola: 0.025, pico: 0.408 },
+
+      // Boton: tono FIJO. Un boton no tiene direccion, no abre ni cierra
+      // nada, y el contraste contra el barrido del par de arriba es lo que
+      // hace que el oido los separe sin pensarlo. 550Hz cae una quinta arriba
+      // de los 360 en los que aterriza `cerrar`, asi que sigue sonando de la
+      // misma familia. Mas corto y mas bajo que el par: se aprieta seguido y
+      // a igual volumen cansaria.
+      boton: { desde: 550, hasta: 550, ataque: 0.001, caida: 0.045, cola: 0.015, pico: 0.3 },
+
+      // Agarrar un icono flotante: registro grave y una caida chiquita, que
+      // es como suena el contacto con algo que tiene peso. El pico es el mas
+      // bajo de todos a proposito: se pueden agarrar diez iconos en cinco
+      // segundos y tiene que seguir siendo agradable.
+      agarrar: { desde: 320, hasta: 240, ataque: 0.001, caida: 0.05, cola: 0.02, pico: 0.2 },
+    };
+
+    const VOLUMEN = 1; // perilla unica para subir o bajar todo a la vez
+    const PISO = 0.0001; // una rampa exponencial no puede tocar el cero
+
+    const quieto = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    let ctx = null;
+
+    /** Toca uno de los presets. Nunca tira: si no hay audio, no pasa nada. */
+    const sonar = (nombre) => {
+      if (quieto) return;
+      const s = SONIDOS[nombre];
+      if (!s) return;
+
+      // Sin un gesto previo del usuario el navegador no deja sonar nada y el
+      // AudioContext queda suspendido para siempre. Pasa en la entrada directa
+      // por URL, que abre el detalle sin que nadie haya clickeado.
+      if (navigator.userActivation && !navigator.userActivation.hasBeenActive) return;
+
+      try {
+        if (!ctx) ctx = new AudioContext();
+        if (ctx.state === "suspended") ctx.resume().catch(() => {});
+      } catch {
+        return; // sin Web Audio el sitio funciona igual, solo que mudo
+      }
+
+      const t = ctx.currentTime;
+      const dur = s.ataque + s.caida + s.cola;
+
+      const osc = ctx.createOscillator();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(s.desde, t);
+      // El barrido corre a lo largo de TODA la envolvente. Con tono fijo el
+      // sonido es un pip; el barrido es lo que le da direccion.
+      if (s.hasta !== s.desde) {
+        osc.frequency.exponentialRampToValueAtTime(Math.max(s.hasta, 1), t + dur);
+      }
+
+      // Envolvente percusiva: rampa lineal al pico y caida exponencial hacia
+      // el piso con constante de tiempo caida/3 (a las tres constantes ya bajo
+      // ~95%, asi que la cola se apaga sola dentro de la duracion nominal).
+      const vol = ctx.createGain();
+      vol.gain.setValueAtTime(PISO, t);
+      vol.gain.linearRampToValueAtTime(s.pico * VOLUMEN, t + s.ataque);
+      vol.gain.setTargetAtTime(PISO, t + s.ataque, s.caida / 3);
+
+      osc.connect(vol);
+      vol.connect(ctx.destination);
+      osc.start(t);
+      // Margen sobre la duracion nominal: cortar el oscilador antes de que la
+      // ganancia llegue al piso mete un click audible.
+      osc.stop(t + dur + 0.1);
+    };
+
+    // TrabajoDetalle dispara `abrir` y `cerrar` a mano, porque el momento
+    // exacto depende de su maquina de estados (el click en un tile no siempre
+    // abre, el cierre puede venir del boton atras del navegador o de Escape).
+    window.sonar = sonar;
+
+    // --- Disparadores delegados ----------------------------------------
+
+    // Todo lo clickeable suena, salvo lo que YA tiene su propio sonido: los
+    // tiles abren el detalle (`abrir`) y el boton de cerrar lo cierra
+    // (`cerrar`). Sin estas exclusiones se escucharian dos sonidos pisados.
+    document.addEventListener("click", (e) => {
+      const el = e.target.closest?.("button, a[href]");
+      if (!el || el.closest("[data-trabajo], [data-cerrar]")) return;
+      sonar("boton");
+    });
+
+    // Agarre de un icono flotante de "Que hacemos".
+    //
+    // Se exige `.fisica-activa`, que la seccion se pone sola cuando el drag
+    // queda habilitado. Los iconos existen en el DOM desde el principio, pero
+    // no se pueden agarrar durante el primer segundo y medio, ni nunca en
+    // tactil (el arrastre robaria el scroll). Sonar ahi seria prometer una
+    // interaccion que no existe.
+    document.addEventListener(
+      "pointerdown",
+      (e) => {
+        if (e.button !== 0) return; // el boton derecho abre el menu, no agarra
+        if (e.target.closest?.(".fisica-activa .icon-node")) sonar("agarrar");
+      },
+      { passive: true },
+    );
+  })();
+</script>

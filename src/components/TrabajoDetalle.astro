@@ -173,6 +173,12 @@ const DATOS = TRABAJOS.map((t) => ({
 
     const quieto = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+    // El sonido vive en Sonido.astro, que expone window.sonar y ademas
+    // engancha solo todo lo clickeable. Aca se llama a mano porque el momento
+    // exacto depende de esta maquina de estados: un click en un tile no
+    // siempre abre, y el cierre puede venir de Escape o del boton atras.
+    const sonar = (n) => window.sonar?.(n);
+
     let abierto = false;
     let indice = -1;
     let tileOrigen = null;
@@ -281,6 +287,8 @@ const DATOS = TRABAJOS.map((t) => ({
       generacion++;
       focoPrevio = document.activeElement;
 
+      sonar("abrir");
+
       congelarCarrusel(true);
       // Bloquea el scroll de la pagina: Lenis sigue vivo debajo y si no,
       // la rueda del mouse sobre el detalle mueve el carrusel de atras.
@@ -335,6 +343,8 @@ const DATOS = TRABAJOS.map((t) => ({
       abierto = false;
       generacion++;
       const mia = generacion;
+
+      sonar("cerrar");
 
       // Caja REAL en este instante, no la del estilo inline. Si el cierre
       // llega en pleno morph de apertura, el estilo inline ya dice el destino

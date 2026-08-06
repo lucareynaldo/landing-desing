@@ -127,7 +127,35 @@ const rotacion = (i: number) => (((i * 37) % 25) - 12) * 0.5;
     const N = Number(viewport.dataset.cantidad);
     const PASO = ITEM + GAP;
     const CICLO = N * PASO; // ancho de un set completo
-    const cajas = Array.from(track.children) as HTMLElement[];
+
+    // La tira tiene que cubrir el viewport MAS un ciclo entero, si no el
+    // punto de reinicio entra en pantalla y se ve el hueco. Con dos copias
+    // fijas eso se rompe apenas la pantalla es ancha o hay zoom out, asi que
+    // se clona lo que falte. Es una sola vez, no por frame.
+    const asegurarCopias = () => {
+      const necesarias = Math.max(2, Math.ceil(window.innerWidth / CICLO) + 1);
+      const actuales = Math.round(track.children.length / N);
+      if (necesarias <= actuales) return false;
+      const molde = Array.from(track.children).slice(0, N) as HTMLElement[];
+      const frag = document.createDocumentFragment();
+      let indice = actuales * N;
+      for (let c = actuales; c < necesarias; c++) {
+        for (const base of molde) {
+          const clon = base.cloneNode(true) as HTMLElement;
+          clon.setAttribute("aria-hidden", "true");
+          // El z-index tiene que seguir la serie, no reiniciarse en cada
+          // copia: si no, en la costura el primero de la copia nueva queda
+          // por debajo del ultimo de la anterior y el apilado se invierte.
+          clon.style.zIndex = String(indice++);
+          frag.appendChild(clon);
+        }
+      }
+      track.appendChild(frag);
+      return true;
+    };
+    asegurarCopias();
+
+    let cajas = Array.from(track.children) as HTMLElement[];
 
     const AMPLITUD = 0.85; // cuanto crece el item bajo el cursor
     const SIGMA = 115; // ancho de la loma en px
@@ -142,12 +170,22 @@ const rotacion = (i: number) => (((i * 37) % 25) - 12) * 0.5;
     let ultimo = 0;
 
     // Ultimo valor escrito por caja: no se toca el DOM si no cambio nada.
-    const escalaPrev = new Float64Array(cajas.length);
-    const zPrev = new Int32Array(cajas.length);
-    escalaPrev.fill(1);
+    let escalaPrev = new Float64Array(cajas.length).fill(1);
+    let zPrev = new Int32Array(cajas.length);
 
     const medir = () => {
       izquierda = viewport.getBoundingClientRect().left;
+    };
+
+    /** Si la ventana crecio y hicieron falta copias nuevas, hay que rehacer
+     *  la lista de cajas y los caches, si no el loop ignora las agregadas. */
+    const recalcular = () => {
+      if (asegurarCopias()) {
+        cajas = Array.from(track.children) as HTMLElement[];
+        escalaPrev = new Float64Array(cajas.length).fill(1);
+        zPrev = new Int32Array(cajas.length);
+      }
+      medir();
     };
 
     const frame = (t: number) => {
@@ -231,7 +269,7 @@ const rotacion = (i: number) => (((i * 37) % 25) - 12) * 0.5;
       entradas[0].isIntersecting ? arrancar() : parar();
     }).observe(viewport);
 
-    window.addEventListener("resize", medir, { passive: true });
+    window.addEventListener("resize", recalcular, { passive: true });
     medir();
   }
 </script>

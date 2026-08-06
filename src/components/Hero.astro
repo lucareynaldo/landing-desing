@@ -22,9 +22,9 @@ const [fila1, fila2, fila3] = filasDelHero();
   */}
   <div class="hero-banda" data-hero-banda>
     <div class="hero-filas flex flex-col gap-3 md:gap-4" data-hero-filas>
-      <Marquee items={fila1} direction="left" duration={70} height="clamp(120px, 30vh, 350px)" />
-      <Marquee items={fila2} direction="right" duration={85} height="clamp(100px, 24.5vh, 290px)" />
-      <Marquee items={fila3} direction="left" duration={60} height="clamp(78px, 17.5vh, 210px)" />
+      <Marquee items={fila1} direction="left" velocidad={32} height="clamp(120px, 30vh, 350px)" />
+      <Marquee items={fila2} direction="right" velocidad={22} height="clamp(100px, 24.5vh, 290px)" />
+      <Marquee items={fila3} direction="left" velocidad={23} height="clamp(78px, 17.5vh, 210px)" />
     </div>
   </div>
 

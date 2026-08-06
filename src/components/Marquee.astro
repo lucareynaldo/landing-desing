@@ -1,34 +1,47 @@
 ---
 import type { Trabajo } from "../data/trabajos";
 
-// Fila de marquee horizontal. CSS puro: la pista se duplica y se desplaza
-// exactamente -50%, con lo que el bucle es continuo sin JS ni saltos.
+// Fila de marquee horizontal.
+//
+// El desplazamiento lo hace una animacion CSS sobre transform, o sea que la
+// interpola el compositor: cero trabajo en el hilo principal, ni una lectura
+// de layout por frame. Por eso NO se reciclan nodos como haria una lista
+// virtualizada; con cinco piezas por fila eso seria cambiar algo gratis por
+// algo que cuesta JS en cada frame.
+//
+// Lo que si hace falta es que la pista sea lo bastante larga. Para que el
+// bucle no muestre huecos, el ancho total tiene que cubrir el viewport MAS un
+// ciclo completo. Con un numero fijo de copias eso se rompe apenas la
+// pantalla es ancha o el usuario hace zoom out, asi que el script de abajo
+// mide y clona solo las que hagan falta.
 //
 // Los tiles son TODOS de la misma proporcion, como en readymag: la variacion
-// de tamaño viene de la fila, no de la pieza. Eso es lo que hace que se lea
-// como un sistema y no como un collage.
-//
-// Cada tile es un <button> que dispara la vista detalle. Solo la primera
-// copia de la pista es interactiva: la segunda existe unicamente para cerrar
-// el bucle y va marcada como aria-hidden e inerte.
+// de tamaño viene de la fila, no de la pieza.
 
 interface Props {
   items: Trabajo[];
   direction?: "left" | "right";
-  duration?: number; // segundos por vuelta completa
+  /** Velocidad en px/s. En px y no en segundos por vuelta para que el ritmo
+   *  no cambie cuando cambia el ancho del ciclo. */
+  velocidad?: number;
   height: string; // alto de la fila; lo decide el hero
 }
 
-const { items, direction = "left", duration = 60, height } = Astro.props;
+const { items, direction = "left", velocidad = 24, height } = Astro.props;
+// Dos copias de arranque: es el minimo para que el bucle cierre y es lo que
+// se ve si el JS no corre. El script agrega mas si el viewport lo pide.
 const track = [...items, ...items];
 ---
 
-<div class="marquee group relative overflow-hidden" data-marquee>
+<div
+  class="marquee group relative overflow-hidden"
+  data-marquee
+  data-por-copia={items.length}
+  data-velocidad={velocidad}
+>
   <div
     class="marquee-track flex w-max gap-3 md:gap-4"
-    style={`--marquee-duration:${duration}s; --marquee-direction:${
-      direction === "left" ? "normal" : "reverse"
-    };`}
+    style={`--marquee-direction:${direction === "left" ? "normal" : "reverse"};`}
   >
     {
       track.map((t, i) => {
@@ -63,9 +76,12 @@ const track = [...items, ...items];
 </div>
 
 <style>
+  /* El destino es exactamente un ciclo, en px, medido por el script. El -50%
+     de reserva es lo que aplica si el JS no corre: correcto para las dos
+     copias que vienen del servidor. */
   @keyframes marquee-scroll {
     to {
-      transform: translateX(-50%);
+      transform: translateX(var(--ciclo, -50%));
     }
   }
 
@@ -88,7 +104,7 @@ const track = [...items, ...items];
   }
 
   .marquee-track {
-    animation: marquee-scroll var(--marquee-duration) linear infinite;
+    animation: marquee-scroll var(--dur, 60s) linear infinite;
     animation-direction: var(--marquee-direction);
     will-change: transform;
   }
@@ -148,3 +164,79 @@ const track = [...items, ...items];
     }
   }
 </style>
+
+<script>
+  // Ajusta cuantas copias de la pista hacen falta y a que velocidad va.
+  //
+  // No hay reciclado de nodos ni calculo por frame: se mide una vez (y en
+  // cada resize) y despues la animacion CSS sigue corriendo sola en el
+  // compositor. Clonar cinco tiles de mas es mucho mas barato que mover
+  // nodos en cada frame, y las imagenes son las mismas: el navegador las
+  // descarga una sola vez.
+  const filas = document.querySelectorAll<HTMLElement>("[data-marquee]");
+
+  filas.forEach((fila) => {
+    const pista = fila.querySelector<HTMLElement>(".marquee-track");
+    if (!pista) return;
+
+    const porCopia = Number(fila.dataset.porCopia);
+    const velocidad = Number(fila.dataset.velocidad);
+    if (!porCopia || !velocidad) return;
+
+    const ajustar = () => {
+      const hijos = Array.from(pista.children) as HTMLElement[];
+      if (hijos.length < porCopia * 2) return;
+
+      // Ancho exacto de un ciclo: la distancia entre un tile y su gemelo de
+      // la copia siguiente. Se mide del layout, asi que ya incluye el gap y
+      // cualquier redondeo; no hay que reconstruirlo con aritmetica.
+      const ciclo = hijos[porCopia].offsetLeft - hijos[0].offsetLeft;
+      if (ciclo <= 0) return;
+
+      // La pista tiene que cubrir el viewport MAS un ciclo entero: recien ahi
+      // el punto de reinicio queda siempre fuera de pantalla.
+      const necesarias = Math.max(2, Math.ceil(window.innerWidth / ciclo) + 1);
+      const actuales = Math.round(hijos.length / porCopia);
+
+      if (necesarias > actuales) {
+        const molde = hijos.slice(0, porCopia);
+        const frag = document.createDocumentFragment();
+        for (let c = actuales; c < necesarias; c++) {
+          for (const base of molde) {
+            const clon = base.cloneNode(true) as HTMLElement;
+            // Las copias se pueden clickear (son las que el usuario ve medio
+            // ciclo de cada dos), pero no se anuncian ni se tabulan.
+            clon.setAttribute("aria-hidden", "true");
+            clon.setAttribute("tabindex", "-1");
+            clon.removeAttribute("id");
+            frag.appendChild(clon);
+          }
+        }
+        pista.appendChild(frag);
+      } else if (necesarias < actuales) {
+        for (let k = (actuales - necesarias) * porCopia; k > 0; k--) {
+          pista.lastElementChild?.remove();
+        }
+      }
+
+      pista.style.setProperty("--ciclo", `-${ciclo}px`);
+      pista.style.setProperty("--dur", `${(ciclo / velocidad).toFixed(2)}s`);
+    };
+
+    ajustar();
+
+    let pendiente = 0;
+    window.addEventListener(
+      "resize",
+      () => {
+        clearTimeout(pendiente);
+        pendiente = window.setTimeout(ajustar, 150);
+      },
+      { passive: true },
+    );
+
+    // Las filas del hero miden en vh y las fotos pueden cambiar el layout al
+    // cargar, asi que conviene remedir cuando termina de asentarse todo.
+    window.addEventListener("load", ajustar, { once: true });
+  });
+</script>

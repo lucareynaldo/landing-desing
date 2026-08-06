@@ -26,8 +26,12 @@
     // --- Presets -------------------------------------------------------
     // desde/hasta: barrido de frecuencia en Hz (iguales = tono fijo)
     // ataque: rampa lineal hasta el pico | caida: constante de tiempo
-    // cola: silencio de gracia antes de cortar el oscilador
+    // cola: silencio de gracia antes de cortar la fuente
     // pico: amplitud maxima, de 0 a 1
+    // onda: sine (por defecto), triangle o ruido
+    // filtro: pasabanda {frecuencia, q}, sobre todo para domar el ruido
+    // capas: apila varias fuentes en un solo sonido
+    // corta: al redisparar, silencia la copia anterior en vez de sumarla
     const SONIDOS = {
       // El par de la vista detalle. Suben y bajan porque acompañan un morph
       // que tambien va y vuelve: son el mismo gesto traducido a audio.
@@ -47,6 +51,25 @@
       // bajo de todos a proposito: se pueden agarrar diez iconos en cinco
       // segundos y tiene que seguir siendo agradable.
       agarrar: { desde: 320, hasta: 240, ataque: 0.001, caida: 0.05, cola: 0.02, pico: 0.2 },
+
+      // Pasar de proyecto: un click, no un tono. Es el unico apilado en capas
+      // porque es el unico que se puede disparar en rafaga, y para eso tiene
+      // que ser MUY corto (~30ms contra los 120 de abrir). A esa duracion un
+      // oscilador solo suena a nada; el caracter sale del apilado:
+      //   - el ruido filtrado da el transitorio, la sensacion de golpe seco
+      //   - el agudo da la altura, y baja apenas para no quedar plano
+      //   - el grave da el cuerpo, para que no sea un chasquido de insecto
+      // `corta` cancela lo que este sonando antes de disparar: manteniendo la
+      // flecha apretada el navegador repite ~30 veces por segundo y sin esto
+      // se apilan treinta copias en un pure.
+      pasar: {
+        corta: true,
+        capas: [
+          { onda: "ruido", filtro: { frecuencia: 7200, q: 1.1 }, ataque: 0, caida: 0.004, cola: 0.002, pico: 0.25 },
+          { onda: "sine", desde: 2200, hasta: 1800, ataque: 0, caida: 0.014, cola: 0.005, pico: 0.38 },
+          { onda: "triangle", desde: 320, hasta: 240, ataque: 0, caida: 0.021, cola: 0.008, pico: 0.25 },
+        ],
+      },
     };
 
     const VOLUMEN = 1; // perilla unica para subir o bajar todo a la vez
@@ -54,6 +77,34 @@
 
     const quieto = matchMedia("(prefers-reduced-motion: reduce)").matches;
     let ctx = null;
+    let ruido = null; // buffer de ruido blanco, se genera una sola vez
+    const vivos = new Map(); // preset -> capas sonando, para poder cortarlas
+
+    /** Un segundo de ruido blanco. Alcanza y sobra: las capas duran ~4ms. */
+    const bufferRuido = () => {
+      if (ruido) return ruido;
+      ruido = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
+      const datos = ruido.getChannelData(0);
+      for (let i = 0; i < datos.length; i++) datos[i] = Math.random() * 2 - 1;
+      return ruido;
+    };
+
+    /** Silencia lo que este sonando de ese preset, sin dejar un corte seco. */
+    const cortar = (nombre, t) => {
+      const previas = vivos.get(nombre);
+      if (!previas) return;
+      for (const { vol, fuente } of previas) {
+        vol.gain.cancelScheduledValues(t);
+        vol.gain.setValueAtTime(vol.gain.value, t);
+        vol.gain.setTargetAtTime(PISO, t, 0.003);
+        try {
+          fuente.stop(t + 0.02);
+        } catch {
+          /* ya estaba parada */
+        }
+      }
+      vivos.delete(nombre);
+    };
 
     /** Toca uno de los presets. Nunca tira: si no hay audio, no pasa nada. */
     const sonar = (nombre) => {
@@ -74,31 +125,76 @@
       }
 
       const t = ctx.currentTime;
-      const dur = s.ataque + s.caida + s.cola;
+      if (s.corta) cortar(nombre, t);
 
-      const osc = ctx.createOscillator();
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(s.desde, t);
-      // El barrido corre a lo largo de TODA la envolvente. Con tono fijo el
-      // sonido es un pip; el barrido es lo que le da direccion.
-      if (s.hasta !== s.desde) {
-        osc.frequency.exponentialRampToValueAtTime(Math.max(s.hasta, 1), t + dur);
+      // Un preset sin capas es un preset de una sola capa. Asi los cuatro
+      // sonidos simples siguen escribiendose en una linea.
+      const capas = s.capas ?? [s];
+      const nodos = [];
+      let largo = 0;
+
+      for (const c of capas) {
+        const dur = c.ataque + c.caida + c.cola;
+        largo = Math.max(largo, dur);
+
+        let fuente;
+        if (c.onda === "ruido") {
+          fuente = ctx.createBufferSource();
+          fuente.buffer = bufferRuido();
+        } else {
+          fuente = ctx.createOscillator();
+          fuente.type = c.onda ?? "sine";
+          fuente.frequency.setValueAtTime(c.desde, t);
+          // El barrido corre a lo largo de TODA la envolvente. Con tono fijo
+          // el sonido es un pip; el barrido es lo que le da direccion.
+          if (c.hasta !== c.desde) {
+            fuente.frequency.exponentialRampToValueAtTime(Math.max(c.hasta, 1), t + dur);
+          }
+        }
+
+        // Envolvente percusiva: rampa lineal al pico y caida exponencial hacia
+        // el piso con constante de tiempo caida/3 (a las tres constantes ya
+        // bajo ~95%, asi que la cola se apaga sola dentro de la duracion).
+        const vol = ctx.createGain();
+        vol.gain.setValueAtTime(PISO, t);
+        if (c.ataque > 0) {
+          vol.gain.linearRampToValueAtTime(c.pico * VOLUMEN, t + c.ataque);
+        } else {
+          // Ataque cero es literal: el golpe seco es justamente el caracter.
+          vol.gain.setValueAtTime(c.pico * VOLUMEN, t);
+        }
+        vol.gain.setTargetAtTime(PISO, t + c.ataque, c.caida / 3);
+
+        // El pasabanda es lo que convierte al ruido blanco en un tick con
+        // altura en vez de un shhh de radio mal sintonizada.
+        if (c.filtro) {
+          const bp = ctx.createBiquadFilter();
+          bp.type = "bandpass";
+          bp.frequency.value = c.filtro.frecuencia;
+          bp.Q.value = c.filtro.q;
+          fuente.connect(bp);
+          bp.connect(vol);
+        } else {
+          fuente.connect(vol);
+        }
+
+        vol.connect(ctx.destination);
+        fuente.start(t);
+        // Margen sobre la duracion nominal: cortar la fuente antes de que la
+        // ganancia llegue al piso mete un click audible.
+        fuente.stop(t + dur + 0.1);
+        nodos.push({ vol, fuente });
       }
 
-      // Envolvente percusiva: rampa lineal al pico y caida exponencial hacia
-      // el piso con constante de tiempo caida/3 (a las tres constantes ya bajo
-      // ~95%, asi que la cola se apaga sola dentro de la duracion nominal).
-      const vol = ctx.createGain();
-      vol.gain.setValueAtTime(PISO, t);
-      vol.gain.linearRampToValueAtTime(s.pico * VOLUMEN, t + s.ataque);
-      vol.gain.setTargetAtTime(PISO, t + s.ataque, s.caida / 3);
-
-      osc.connect(vol);
-      vol.connect(ctx.destination);
-      osc.start(t);
-      // Margen sobre la duracion nominal: cortar el oscilador antes de que la
-      // ganancia llegue al piso mete un click audible.
-      osc.stop(t + dur + 0.1);
+      if (s.corta) {
+        vivos.set(nombre, nodos);
+        setTimeout(
+          () => {
+            if (vivos.get(nombre) === nodos) vivos.delete(nombre);
+          },
+          (largo + 0.15) * 1000,
+        );
+      }
     };
 
     // TrabajoDetalle dispara `abrir` y `cerrar` a mano, porque el momento

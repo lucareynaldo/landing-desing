@@ -49,6 +49,16 @@ const {
       <main>
         <slot />
       </main>
+
+      {/*
+        Marca el final de la lamina. Cuando entra en pantalla, el borde
+        inferior de la lamina ya subio y el footer quedo destapado.
+
+        Hace falta porque el footer es fixed y ocupa la pantalla entera: un
+        IntersectionObserver sobre el daria SIEMPRE intersectando. No esta
+        fuera de vista cuando no se ve, esta tapado.
+      */}
+      <div class="h-px" data-fin-lamina aria-hidden="true"></div>
     </div>
 
     <SiteFooter />

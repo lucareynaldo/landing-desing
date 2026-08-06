@@ -22,8 +22,11 @@ const UPDATED = "Agosto 2026";
   class="fixed inset-x-0 bottom-0 top-0 z-0 flex h-[100svh] flex-col justify-between overflow-hidden bg-void px-6 py-6 text-surface md:px-10 md:py-8"
   aria-labelledby="cta-title"
 >
-  {/* Capa reservada para el fondo del CTA. Hoy negro plano. */}
-  <div class="footer-bg pointer-events-none absolute inset-0" aria-hidden="true"></div>
+  {/* Grilla de fondo. Ver el bloque de estilos al final del archivo. */}
+  <div class="footer-bg pointer-events-none absolute inset-0" aria-hidden="true">
+    <div class="grilla grilla-tenue"></div>
+    <div class="grilla-foco"><div class="grilla"></div></div>
+  </div>
 
   {/* --- Esquinas superiores --- */}
   <div class="relative flex items-start justify-between">
@@ -102,5 +105,131 @@ const UPDATED = "Agosto 2026";
     };
     tick();
     setInterval(tick, 1000 * 15);
+  }
+</script>
+
+<style>
+  /* Grilla del fondo del footer.
+     
+     Del mecanismo de teamworkgraph se midieron dos cosas: las lineas son un
+     hairline de 1px, y la grilla nunca toca los bordes, se disuelve antes.
+
+     La tercera se deduce de que la grilla de ellos es de UN SOLO color, un
+     gris azulado: el multicolor no sale de pintar las lineas, sale de una capa
+     de color abajo que se ve a traves de ellas. Aca se hace igual, porque
+     pintar linea por linea daria el mismo resultado con diez veces mas
+     trabajo y sin poder mover el color despues. */
+  .footer-bg {
+    --celda: 58px;
+    --mx: 50%;
+    --my: 50%;
+
+    /* Disuelve el patron antes de los bordes. Sin esto la grilla termina en un
+       corte recto contra el borde de la pantalla, que se lee como un error de
+       recorte y no como una textura. */
+    -webkit-mask-image: radial-gradient(ellipse 85% 70% at 50% 45%, #000 25%, transparent 100%);
+    mask-image: radial-gradient(ellipse 85% 70% at 50% 45%, #000 25%, transparent 100%);
+  }
+
+  .grilla {
+    position: absolute;
+    inset: 0;
+
+    /* El color va ABAJO: cuatro manchas grandes y difusas de los acentos de la
+       marca. La grilla las recorta, asi que cada tramo de linea toma el color
+       de la zona por la que pasa. */
+    background-image:
+      radial-gradient(45% 40% at 15% 20%, var(--color-accent) 0%, transparent 70%),
+      radial-gradient(45% 40% at 85% 25%, #0055ff 0%, transparent 70%),
+      radial-gradient(45% 40% at 25% 85%, #12b76a 0%, transparent 70%),
+      radial-gradient(45% 40% at 80% 80%, var(--color-accent-warm) 0%, transparent 70%);
+
+    /* Las dos capas de mascara se componen con `add`, que es la union: una
+       aporta las verticales y la otra las horizontales. */
+    -webkit-mask-image:
+      repeating-linear-gradient(90deg, #000 0 1px, transparent 1px var(--celda)),
+      repeating-linear-gradient(180deg, #000 0 1px, transparent 1px var(--celda));
+    mask-image:
+      repeating-linear-gradient(90deg, #000 0 1px, transparent 1px var(--celda)),
+      repeating-linear-gradient(180deg, #000 0 1px, transparent 1px var(--celda));
+  }
+
+  /* La base, siempre presente: le da textura al footer aunque nadie pase el
+     mouse, que es lo que sostiene el efecto en tactil y en teclado. */
+  .grilla-tenue {
+    opacity: 0.22;
+  }
+
+  /* La misma grilla a full, recortada a un circulo pegado al cursor. */
+  .grilla-foco {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity var(--duration-slow) var(--ease-out);
+    -webkit-mask-image: radial-gradient(circle 240px at var(--mx) var(--my), #000 0%, transparent 100%);
+    mask-image: radial-gradient(circle 240px at var(--mx) var(--my), #000 0%, transparent 100%);
+  }
+
+  /* La clase la pone el script recien con el primer movimiento del puntero.
+     Sin eso el circulo arrancaria encendido y clavado en el centro, que es una
+     mancha que nadie pidio. */
+  .footer-bg.con-foco .grilla-foco {
+    opacity: 1;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .grilla-foco {
+      display: none;
+    }
+  }
+</style>
+
+<script>
+  // La grilla se enciende cerca del cursor, y solo mientras el footer se ve.
+  //
+  // La señal de visibilidad es [data-fin-lamina], no el footer: el footer es
+  // fixed y ocupa la pantalla entera, asi que observarlo daria siempre
+  // intersectando. No esta fuera de vista cuando no se ve, esta tapado por la
+  // lamina de contenido.
+  const capa = document.querySelector<HTMLElement>(".footer-bg");
+  const finLamina = document.querySelector("[data-fin-lamina]");
+
+  const fino = matchMedia("(pointer: fine)").matches;
+  const quieto = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  if (capa && finLamina && fino && !quieto) {
+    let pendiente = false;
+    let x = 0;
+    let y = 0;
+
+    const pintar = () => {
+      pendiente = false;
+      const r = capa.getBoundingClientRect();
+      capa.style.setProperty("--mx", `${x - r.left}px`);
+      capa.style.setProperty("--my", `${y - r.top}px`);
+      capa.classList.add("con-foco");
+    };
+
+    const mover = (e: PointerEvent) => {
+      x = e.clientX;
+      y = e.clientY;
+      if (!pendiente) {
+        pendiente = true;
+        requestAnimationFrame(pintar);
+      }
+    };
+
+    // Mover la mascara repinta la capa entera, asi que es la parte cara de
+    // esto y no tiene sentido pagarla mientras el footer esta tapado. El
+    // listener se da de alta y de baja con la visibilidad, en vez de quedar
+    // siempre puesto preguntando si corresponde.
+    new IntersectionObserver((entradas) => {
+      if (entradas[0].isIntersecting) {
+        window.addEventListener("pointermove", mover, { passive: true });
+      } else {
+        window.removeEventListener("pointermove", mover);
+        capa.classList.remove("con-foco");
+      }
+    }).observe(finLamina);
   }
 </script>

@@ -258,7 +258,15 @@ const CADENA: EnCadena[] = PROCESO.flatMap((etapa, i) => {
         if (!t0) t0 = t;
         const p = Math.min(1, (t - t0) / DURACION);
         grid.style.setProperty("--p", String(p));
-        if (p < 1) requestAnimationFrame(frame);
+        if (p < 1) {
+          requestAnimationFrame(frame);
+        } else {
+          // Habilita las transiciones de hover. No pueden estar antes: la
+          // animacion reescribe scale, background y borde en cada frame, y con
+          // una transicion encima cada frame perseguiria al anterior en vez de
+          // dibujar.
+          grid.classList.add("listo");
+        }
       };
 
       // Se observa el GRAFICO, no la seccion: el borde superior de la seccion

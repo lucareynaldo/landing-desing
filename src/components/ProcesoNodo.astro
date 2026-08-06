@@ -57,8 +57,10 @@ const { n, nombre, tono, indice, col, fila } = Astro.props;
 
     opacity: var(--entrada);
     /* Entra apenas achicado. Mas que esto se pelea con el grid: el nodo se ve
-       moverse dentro de su celda en vez de aparecer en ella. */
-    scale: calc(0.94 + var(--entrada) * 0.06);
+       moverse dentro de su celda en vez de aparecer en ella. El termino de
+       --realce es el hover, que se suma en vez de pisar: si fuera otra regla
+       de scale, hacer hover durante la entrada cancelaria la entrada. */
+    scale: calc(0.94 + var(--entrada) * 0.06 + var(--realce, 0) * 0.035);
 
     border-color: var(--viajero);
     /* Un lavado de color que se va con la estela, para que el nodo recien
@@ -70,8 +72,43 @@ const { n, nombre, tono, indice, col, fila } = Astro.props;
     );
   }
 
+  /* El hover devuelve a la etapa el color con el que entro.
+     Terminado el recorrido los diez nodos quedan en tinta, asi que recuperar
+     su color es lo que hace sentir que cada etapa tiene identidad propia y no
+     son diez cajas iguales. Se apoya en --viajero, que ya usan el borde y el
+     numero: alcanza con redefinirlo aca y las custom properties se encargan
+     de bajarlo a los hijos.
+
+     La media query deja afuera el tactil, donde el hover se queda pegado
+     despues de tocar. */
+  @media (hover: hover) {
+    .proceso-nodo:hover {
+      --viajero: var(--tono);
+      --realce: 1;
+      background: color-mix(in srgb, var(--color-surface), var(--tono) 8%);
+    }
+  }
+
+  /* La transicion existe SOLO despues del recorrido. La clase la pone el
+     script al llegar --p a 1.
+
+     Sin esta condicion la entrada sale pastosa: la animacion reescribe scale,
+     background y borde en cada frame, y un nodo entra en ~70ms, o sea menos de
+     lo que dura la propia transicion. Cada frame quedaria persiguiendo al
+     anterior en vez de dibujar. */
+  :global(.listo) .proceso-nodo {
+    transition:
+      scale var(--duration-base) var(--ease-out),
+      background var(--duration-base) var(--ease-out),
+      border-color var(--duration-base) var(--ease-out);
+  }
+
   .proceso-n {
     color: var(--viajero);
+  }
+
+  :global(.listo) .proceso-n {
+    transition: color var(--duration-base) var(--ease-out);
   }
 
   .proceso-nombre {

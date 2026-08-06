@@ -177,6 +177,26 @@ entrega — y abren y cierran en el violeta de la marca. El nodo recién llegado
 suma un lavado del 8% de su color en el fondo, para tener cuerpo y no solo un
 borde de color.
 
+**Hover del nodo.** Escala un 3.5% más y recupera el color con el que entró.
+Terminado el recorrido los diez quedan en tinta, así que devolverles su color es
+lo que hace sentir que cada etapa tiene identidad propia y no son diez cajas
+iguales. Se apoya en `--viajero`, que ya usan el borde y el número: alcanza con
+redefinirlo en el `:hover`.
+
+El realce **suma** al término de entrada en el mismo `scale` en vez de pisarlo
+con otra regla; si fuera una regla aparte, hacer hover durante la entrada
+cancelaría la entrada.
+
+La transición existe solo después del recorrido, vía una clase `listo` que pone
+el script al llegar `--p` a 1. Sin esa condición la entrada sale pastosa: la
+animación reescribe `scale`, `background` y borde en cada frame, y un nodo entra
+en ~70ms, menos de lo que dura la propia transición. Con `prefers-reduced-motion`
+la clase nunca se agrega, así que el hover funciona pero sin transición — que es
+justamente lo que corresponde ahí.
+
+Va detrás de `@media (hover: hover)`: en táctil el hover se queda pegado después
+de tocar.
+
 **Vértices.** Línea de 1px y una punta de flecha en el extremo de llegada, que
 es siempre el opuesto al `transform-origin` de la línea. La punta es un cuadrado
 de 5px con dos bordes, girado: el vértice donde se cruzan es el que apunta.

@@ -87,8 +87,10 @@ const track = [...items, ...items];
   /* Hover de imagen medido en readymag: transition filter 100ms ease */
   .marquee-item {
     filter: saturate(1);
+    transform: scale(1);
     transition:
       filter 100ms ease,
+      transform 500ms var(--ease-out),
       opacity 180ms cubic-bezier(0.16, 1, 0.3, 1);
   }
   .marquee:hover .marquee-item {
@@ -102,16 +104,15 @@ const track = [...items, ...items];
     outline-offset: 3px;
   }
 
-  /* La foto crece apenas dentro del tile, que no se mueve. Duracion mas larga
-     que el desaturado (100ms) a proposito: el color reacciona al instante y
-     el zoom queda por detras, que es lo que lo hace sentir suave y no brusco. */
-  .marquee-item img {
-    transform: scale(1);
-    transition: transform 500ms var(--ease-out);
-  }
-  .marquee-item:hover img,
-  .marquee-item:focus-visible img {
-    transform: scale(1.07);
+  /* La card entera crece un poco. Duracion mas larga que el desaturado
+     (100ms) a proposito: el color reacciona al instante y la escala queda por
+     detras, que es lo que lo hace sentir suave y no brusco.
+     El z-index la levanta por encima de sus vecinas: si no, la de al lado le
+     recorta la esquina al crecer. */
+  .marquee-item:hover,
+  .marquee-item:focus-visible {
+    transform: scale(1.05);
+    z-index: 2;
   }
 
   /* El tile de origen se esconde mientras su copia flotante hace el morph */

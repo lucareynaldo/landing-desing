@@ -170,6 +170,15 @@ const DATOS = TRABAJOS.map((t) => ({
     const D_MORPH = 280;
     const D_CONTENIDO = 180;
     const PROPORCION = 16 / 10;
+    // La barra entra corrida su ancho entero. Antes eran 12px con un fundido,
+    // que a ese recorrido se lee como "aparecio", no como "entro desde el
+    // costado": 12px no alcanzan para leerse como direccion. Va a la par del
+    // morph, no en su propia duracion, para que sean un gesto y no dos.
+    const D_PANEL = D_MORPH;
+    // Cuanto se corre la imagen al cambiar de proyecto. Es un empujon, no un
+    // carrusel: lo que cuenta la direccion es el fundido cruzado, el
+    // desplazamiento solo le pone signo.
+    const DESLIZ = 56;
 
     const quieto = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -322,13 +331,13 @@ const DATOS = TRABAJOS.map((t) => ({
         ponerCaja(r1);
 
         animar(fondo, [{ opacity: 0 }, { opacity: 1 }], { duration: D_CONTENIDO, easing: EASE });
+        // Sin fundido: una barra opaca que se desliza no necesita aparecer
+        // ademas, y el fundido le sacaba solidez. El retardo es lo que hace
+        // que se lea como que la sigue a la imagen en vez de salir junto.
         animar(
           panel,
-          [
-            { opacity: 0, transform: "translateX(-12px)" },
-            { opacity: 1, transform: "translateX(0)" },
-          ],
-          { duration: D_CONTENIDO, easing: EASE, delay: 40, fill: "backwards" },
+          [{ transform: "translateX(-100%)" }, { transform: "translateX(0)" }],
+          { duration: D_PANEL, easing: EASE, delay: 40, fill: "backwards" },
         );
       }
 
@@ -354,6 +363,15 @@ const DATOS = TRABAJOS.map((t) => ({
       const r1 = { left: vr.left, top: vr.top, width: vr.width, height: vr.height };
       const r0 = tileOrigen ? tileOrigen.getBoundingClientRect() : null;
 
+      // Si el cierre cae en medio de un salto entre proyectos, el media viene
+      // corrido y semitransparente por el desliz. Esa caja medida ya incluye
+      // el transform, asi que hay que soltarlo: dejarlo puesto lo sumaria una
+      // segunda vez sobre el left/top del morph y la imagen saltaria.
+      media.getAnimations().forEach((a) => a.cancel());
+      media.style.transform = "none";
+      media.style.opacity = "1";
+      ponerCaja(r1);
+
       let listo = false;
       const terminar = () => {
         // Un cierre viejo no puede pisar una apertura nueva.
@@ -377,11 +395,8 @@ const DATOS = TRABAJOS.map((t) => ({
         animar(fondo, [{ opacity: 1 }, { opacity: 0 }], { duration: D_CONTENIDO, easing: EASE, fill: "forwards" });
         animar(
           panel,
-          [
-            { opacity: 1, transform: "translateX(0)" },
-            { opacity: 0, transform: "translateX(-12px)" },
-          ],
-          { duration: D_CONTENIDO, easing: EASE, fill: "forwards" },
+          [{ transform: "translateX(0)" }, { transform: "translateX(-100%)" }],
+          { duration: D_PANEL, easing: EASE, fill: "forwards" },
         );
         const a = animar(
           media,
@@ -409,8 +424,33 @@ const DATOS = TRABAJOS.map((t) => ({
       const d = DATOS[i];
       indice = i;
 
+      sonar("pasar");
+
       const opciones = { duration: D_CONTENIDO, easing: EASE };
-      if (!quieto) animar(contenido, [{ opacity: 1 }, { opacity: 0 }], opciones);
+
+      // La imagen sale hacia el lado al que se esta yendo el usuario y la
+      // siguiente entra desde el lado opuesto, como pasar una pagina:
+      // "siguiente" empuja todo hacia la izquierda. Sin esto los dos botones
+      // producen exactamente la misma transicion y se pierde el sentido de en
+      // que direccion te estas moviendo por la lista.
+      const salida = paso > 0 ? -DESLIZ : DESLIZ;
+
+      if (!quieto) {
+        animar(contenido, [{ opacity: 1 }, { opacity: 0 }], opciones);
+        // fill forwards en la salida: sin eso la animacion termina justo
+        // cuando corre el timeout de abajo y el media vuelve un frame a
+        // opacidad 1 antes de repintarse, lo que se ve como un parpadeo de la
+        // imagen vieja. La entrada no lo necesita: aterriza en el estado de
+        // reposo, que es al que vuelve solo.
+        animar(
+          media,
+          [
+            { transform: "translateX(0)", opacity: 1 },
+            { transform: `translateX(${salida}px)`, opacity: 0 },
+          ],
+          { ...opciones, fill: "forwards" },
+        );
+      }
 
       setTimeout(
         () => {
@@ -420,7 +460,17 @@ const DATOS = TRABAJOS.map((t) => ({
           if (generacion !== mia || !abierto) return;
           pintar(d);
           marcarOrigen(buscarTile(d.slug));
-          if (!quieto) animar(contenido, [{ opacity: 0 }, { opacity: 1 }], opciones);
+          if (!quieto) {
+            animar(contenido, [{ opacity: 0 }, { opacity: 1 }], opciones);
+            animar(
+              media,
+              [
+                { transform: `translateX(${-salida}px)`, opacity: 0 },
+                { transform: "translateX(0)", opacity: 1 },
+              ],
+              opciones,
+            );
+          }
         },
         quieto ? 0 : D_CONTENIDO,
       );
@@ -446,20 +496,15 @@ const DATOS = TRABAJOS.map((t) => ({
     raiz.querySelector("[data-siguiente]").addEventListener("click", () => saltar(1));
     fondo.addEventListener("click", () => cerrar());
 
-    // Click en el vacio alrededor de la imagen -> cerrar.
+    // Cualquier click que no sea en la barra lateral cierra, la foto incluida.
     //
     // No alcanza con el listener del fondo: el flex de arriba lo tapa entero,
-    // asi que a [data-fondo] no le llega un solo click. El area del media es
-    // la que los recibe, y como el elemento que morphea es fixed y
-    // pointer-events:none, los clicks SOBRE la imagen tambien caen aca. Por eso
-    // no se puede distinguir por target y se compara contra su caja: adentro
-    // de la imagen no pasa nada, afuera cierra.
-    area?.addEventListener("click", (e) => {
-      const r = media.getBoundingClientRect();
-      const dentro =
-        e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
-      if (!dentro) cerrar();
-    });
+    // asi que a [data-fondo] no le llega un solo click. El area del media es la
+    // que los recibe, y como el elemento que morphea es fixed y
+    // pointer-events:none, los clicks sobre la imagen tambien caen aca. Que el
+    // area entera cierre es entonces una sola linea: la barra lateral se queda
+    // afuera por estar en otra rama del arbol, no por una exclusion explicita.
+    area?.addEventListener("click", () => cerrar());
 
     document.addEventListener("keydown", (e) => {
       if (!abierto) return;

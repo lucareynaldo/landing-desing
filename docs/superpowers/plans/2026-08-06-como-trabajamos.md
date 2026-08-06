@@ -167,13 +167,13 @@ npx astro build && npx astro check && node scripts/verificar-proceso.mjs --tarea
 
 Esperado: build limpio, `0 errors, 0 warnings, 0 hints`, y `OK`.
 
-Confirmar además que el mail sigue apareciendo tres veces en el footer compilado:
+Confirmar además que el mail sigue apareciendo la misma cantidad de veces en el footer compilado:
 
 ```bash
 node -e "const h=require('fs').readFileSync('dist/index.html','utf8');console.log((h.match(/hola@estudio\.com/g)||[]).length)"
 ```
 
-Esperado: `3`.
+Esperado: `4` — tres `mailto:` y una vez como texto visible del link.
 
 - [ ] **Step 7: Commit**
 

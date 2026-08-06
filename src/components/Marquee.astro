@@ -149,12 +149,6 @@ const track = [...items, ...items];
     z-index: 2;
   }
 
-  /* El tile de origen se esconde mientras su copia flotante hace el morph */
-  .marquee-item[data-origen] {
-    opacity: 0;
-    transition: none;
-  }
-
   @media (prefers-reduced-motion: reduce) {
     .marquee-track {
       animation: none;

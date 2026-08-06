@@ -1,0 +1,29 @@
+---
+import Base from "../layouts/Base.astro";
+import GrillaTrabajos from "../components/GrillaTrabajos.astro";
+import { TRABAJOS } from "../data/trabajos";
+
+const anios = TRABAJOS.map((t) => Number(t.anio));
+const desde = Math.min(...anios);
+const hasta = Math.max(...anios);
+---
+
+<Base
+  title="Trabajos · Estudio"
+  description="Marcas, packaging, editorial y web. Todo lo que hicimos, en un solo lugar."
+>
+  <div class="mx-auto flex w-full max-w-[1500px] flex-col gap-2 px-6 pt-10 md:px-10 md:pt-16">
+    <p class="type-meta text-ink-muted">Portfolio · {desde}–{hasta}</p>
+    <h1 class="type-display max-w-[16ch] text-[clamp(2.25rem,5.5vw,4.5rem)] text-ink-strong">
+      Todo lo que hicimos
+    </h1>
+    <p class="type-body mt-3 max-w-[52ch] text-lg text-ink-soft">
+      Cada pieza abre en detalle sin sacarte de acá. Se puede recorrer con las flechas
+      del teclado.
+    </p>
+  </div>
+
+  <div class="mt-12 md:mt-16">
+    <GrillaTrabajos />
+  </div>
+</Base>

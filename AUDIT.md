@@ -285,6 +285,66 @@ Nada de esto necesita WebGL ni des-minificación. Se reproduce con:
 4. Duraciones cortas (180–280ms) con `cubic-bezier(.16, 1, .3, 1)`.
 5. Ruta propia por proyecto con History API.
 
+## El modo exploración (la grilla)
+
+### No es masonry de CSS
+
+`.feed-grid` tiene **un solo hijo**: un flex con N columnas explícitas
+(`min-w-0 flex-1`), gap 12px. Los items se reparten por JS, no por
+`column-count`.
+
+Y no los reparte por turnos: con 60 items en 4 columnas quedaron
+**15 / 15 / 16 / 14**. Un round-robin daría 15/15/15/15 exacto, así que va
+**a la columna más corta**. El desbalance final es de 492px sobre ~4000, o
+sea aproximadamente la altura de una pieza, que es justo la cota de ese
+algoritmo.
+
+Es la decisión correcta: `column-count` de CSS llena una columna entera
+antes de pasar a la siguiente, con lo que el orden de lectura se rompe.
+
+### Columnas y contenedor
+
+| Ancho de ventana | Columnas | Ancho de columna |
+|---|---|---|
+| 900px | 3 | 276px |
+| 1440px | 4 | 276px |
+| 1920px | 4 | 340px |
+
+O sea: la cantidad va por breakpoint, no por división de ancho, y el
+contenedor tiene un máximo (~1394px para el área de grilla). Las columnas
+son `flex-1`, así que estiran.
+
+El sidebar es `fixed` a partir de `lg` y `static` abajo de eso.
+
+### La pieza de la grilla
+
+```
+div.group.rounded-sm.bg-media-card   ← fondo #F7F7F7 mientras carga, radio 8px
+  a.relative.block.rounded-sm
+    span.cursor-zoom-in              ← el cursor anuncia que expande
+      img.size-full.object-cover
+      video (absolute, opacity-0 hasta data-feed-video-painted)
+    span (avatar 28px, abajo a la izquierda)
+  span.absolute.inset-0.z-20.border  ← filete por ENCIMA del media
+```
+
+Dos detalles que valen:
+
+- **El filete va por encima del media**, no en el contenedor. Así una foto
+  clara sobre fondo claro conserva el borde.
+- **El video se superpone a la imagen** y recién aparece cuando pintó. Evita
+  el parpadeo del recuadro vacío mientras carga.
+
+### Filtros y paginado
+
+Las categorías del sidebar son **rutas** (`/websites`, `/og-images`,
+`/app-icons`), no filtrado en cliente. Y hay scroll infinito: al llegar al
+fondo pasó de 60 a 100 piezas.
+
+Para nosotros ninguna de las dos aplica igual: con 15 trabajos el scroll
+infinito no tiene sentido, y el filtrado en cliente con la URL sincronizada
+da mejor respuesta que una navegación completa por categoría.
+
 ---
 
 ## Sobre qué tomamos de estos sitios

@@ -129,6 +129,17 @@ html {
 }
 
 /* ---------------------------------------------------------------
+   Vista detalle
+   La pieza de origen se esconde mientras su copia flotante hace el morph.
+   Va global porque el origen puede ser un tile del marquee del hero o una
+   pieza de la grilla del portfolio, que son componentes distintos.
+---------------------------------------------------------------- */
+[data-origen] {
+  opacity: 0 !important;
+  transition: none !important;
+}
+
+/* ---------------------------------------------------------------
    Accesibilidad
 ---------------------------------------------------------------- */
 @media (prefers-reduced-motion: reduce) {

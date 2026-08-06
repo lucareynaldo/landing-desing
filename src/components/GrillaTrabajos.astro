@@ -1,0 +1,252 @@
+---
+import { TRABAJOS, type Trabajo } from "../data/trabajos";
+
+// Grilla masonry del portfolio, con la mecanica medida en recent.design.
+//
+// NO usa `column-count` de CSS: eso llena una columna entera antes de pasar a
+// la siguiente y rompe el orden de lectura. Lo que hacen ellos —y lo que se
+// hace aca— es un flex de N columnas y repartir cada pieza en la columna MAS
+// CORTA. Medido en su grilla: 60 items en 4 columnas dieron 15/15/16/14; un
+// reparto por turnos habria dado 15/15/15/15 exacto.
+//
+// El reparto se resuelve en build, no en el cliente: la proporcion de cada
+// pieza es dato conocido, asi que la altura relativa se puede calcular sin
+// medir nada. Cero JS de layout y cero salto al cargar.
+
+const CATEGORIAS = ["Todos", ...new Set(TRABAJOS.map((t) => t.categoria))];
+const COLUMNAS = 4;
+
+/** Alto relativo de una pieza, en unidades de ancho de columna. */
+function altoRelativo(t: Trabajo): number {
+  const [w, h] = t.aspecto.split("/").map(Number);
+  return h / w;
+}
+
+/** Reparte en N columnas mandando cada pieza a la mas corta hasta ese momento. */
+function repartir(items: Trabajo[], n: number): Trabajo[][] {
+  const cols: Trabajo[][] = Array.from({ length: n }, () => []);
+  const altos = new Array(n).fill(0);
+  for (const t of items) {
+    let masCorta = 0;
+    for (let i = 1; i < n; i++) if (altos[i] < altos[masCorta]) masCorta = i;
+    cols[masCorta].push(t);
+    // El extra cubre el pie (cliente + año) y el gap. Es una aproximacion:
+    // esas dos cosas miden px fijos y no escalan con el ancho de columna.
+    // Alcanza para que el HTML salga bien repartido de entrada; el cliente
+    // lo afina despues con alturas reales.
+    altos[masCorta] += altoRelativo(t) + 0.13;
+  }
+  return cols;
+}
+
+const columnas = repartir(TRABAJOS, COLUMNAS);
+---
+
+<section class="mx-auto w-full max-w-[1500px] px-6 pb-24 md:px-10">
+  {/* --- Filtros --- */}
+  <div
+    class="sticky top-[72px] z-30 -mx-6 mb-8 bg-surface/85 px-6 py-4 backdrop-blur-md md:-mx-10 md:px-10"
+    data-filtros
+  >
+    <div class="flex flex-wrap items-center gap-2">
+      {
+        CATEGORIAS.map((c) => (
+          <button
+            type="button"
+            data-categoria={c}
+            class="chip type-meta rounded-full px-3.5 py-2 text-ink-soft transition-colors duration-(--duration-fast) ease-(--ease-inout)"
+          >
+            {c}
+          </button>
+        ))
+      }
+      <span class="type-meta ml-auto text-ink-muted" data-conteo>
+        {TRABAJOS.length} trabajos
+      </span>
+    </div>
+  </div>
+
+  {/* --- Masonry --- */}
+  <div class="flex items-start gap-3 md:gap-4" data-grilla>
+    {
+      columnas.map((col) => (
+        <div class="flex min-w-0 flex-1 flex-col gap-3 md:gap-4">
+          {col.map((t) => (
+            <article
+              data-pieza
+              data-cat={t.categoria}
+              data-orden={TRABAJOS.indexOf(t)}
+              data-alto={altoRelativo(t).toFixed(4)}
+            >
+              <button
+                type="button"
+                data-trabajo={t.slug}
+                aria-label={`Ver ${t.cliente}: ${t.titulo}`}
+                class="pieza group relative block w-full cursor-zoom-in overflow-hidden rounded-xl bg-surface-2 text-left"
+                style={`aspect-ratio:${t.aspecto};`}
+              >
+                {t.media && (
+                  <img
+                    src={t.media}
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                    class="absolute inset-0 size-full object-cover"
+                  />
+                )}
+
+                {/* El filete va POR ENCIMA del media, como en la referencia:
+                    asi una foto clara sobre fondo claro conserva el borde. */}
+                <span
+                  class="pointer-events-none absolute inset-0 z-20 rounded-xl ring-1 ring-inset ring-ink/10"
+                  aria-hidden="true"
+                />
+
+                <span class="type-meta absolute bottom-3 left-3 z-10 rounded-full bg-surface/80 px-2.5 py-1 text-[0.6rem] text-ink backdrop-blur-sm">
+                  {t.categoria}
+                </span>
+              </button>
+
+              <div class="mt-2.5 flex items-baseline justify-between gap-3 px-0.5">
+                <p class="type-meta truncate text-ink">{t.cliente}</p>
+                <p class="type-meta shrink-0 text-ink-muted">{t.anio}</p>
+              </div>
+            </article>
+          ))}
+        </div>
+      ))
+    }
+  </div>
+
+  <p class="type-body mt-16 hidden text-center text-ink-muted" data-vacio>
+    No hay trabajos en esa categoría todavía.
+  </p>
+</section>
+
+<style>
+  .chip {
+    background-color: var(--color-surface-2);
+  }
+  .chip:hover {
+    background-color: var(--color-surface-3);
+  }
+  .chip[aria-pressed="true"] {
+    background-color: var(--color-ink-strong);
+    color: var(--color-surface);
+  }
+
+  .pieza {
+    transition:
+      transform 500ms var(--ease-out),
+      filter 100ms ease;
+  }
+  .pieza:hover {
+    transform: scale(1.02);
+  }
+  .pieza:focus-visible {
+    outline: 2px solid var(--color-ink-strong);
+    outline-offset: 3px;
+  }
+
+  /* Al filtrar, las que no aplican salen antes de que el layout se reacomode */
+  [data-pieza] {
+    transition:
+      opacity 180ms var(--ease-out),
+      transform 180ms var(--ease-out);
+  }
+  [data-pieza][hidden] {
+    display: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pieza,
+    [data-pieza] {
+      transition: none;
+    }
+  }
+</style>
+
+<script>
+  const raiz = document.querySelector<HTMLElement>("[data-grilla]");
+  const chips = Array.from(document.querySelectorAll<HTMLButtonElement>(".chip"));
+  const conteo = document.querySelector<HTMLElement>("[data-conteo]");
+  const vacio = document.querySelector<HTMLElement>("[data-vacio]");
+
+  if (raiz && chips.length) {
+    const columnasEl = Array.from(raiz.children) as HTMLElement[];
+    // En orden original del catalogo, no en el que quedaron en las columnas.
+    const piezas = Array.from(raiz.querySelectorAll<HTMLElement>("[data-pieza]")).sort(
+      (a, b) => Number(a.dataset.orden) - Number(b.dataset.orden),
+    );
+
+    /**
+     * Reparte las piezas visibles en las columnas, siempre a la mas corta.
+     *
+     * Mide las alturas REALES en vez de estimarlas. El reparto del build usa
+     * una aproximacion porque en build no se conoce el ancho de columna, y el
+     * pie de cada pieza mide px fijos que no escalan con ese ancho. Aca ya se
+     * puede medir, asi que el balance sale exacto.
+     *
+     * Es una sola lectura de layout por llamada (init, filtro y resize), no
+     * por frame.
+     */
+    const redistribuir = (visiblesEl: HTMLElement[]) => {
+      const gap = parseFloat(getComputedStyle(columnasEl[0]).rowGap) || 0;
+      const altos = visiblesEl.map((p) => p.offsetHeight);
+      const acum = new Array(columnasEl.length).fill(0);
+      visiblesEl.forEach((p, i) => {
+        let masCorta = 0;
+        for (let k = 1; k < acum.length; k++) if (acum[k] < acum[masCorta]) masCorta = k;
+        columnasEl[masCorta].appendChild(p);
+        acum[masCorta] += altos[i] + gap;
+      });
+    };
+
+    const aplicar = (cat: string, conHistoria = true) => {
+      const visiblesEl = piezas.filter((p) => {
+        const entra = cat === "Todos" || p.dataset.cat === cat;
+        p.hidden = !entra;
+        return entra;
+      });
+      const visibles = visiblesEl.length;
+
+      redistribuir(visiblesEl);
+
+      chips.forEach((c) => c.setAttribute("aria-pressed", String(c.dataset.categoria === cat)));
+      if (conteo) conteo.textContent = `${visibles} ${visibles === 1 ? "trabajo" : "trabajos"}`;
+      if (vacio) vacio.classList.toggle("hidden", visibles > 0);
+
+      if (conHistoria) {
+        const url = new URL(location.href);
+        if (cat === "Todos") url.searchParams.delete("categoria");
+        else url.searchParams.set("categoria", cat);
+        history.replaceState(null, "", url);
+      }
+    };
+
+    let actual = "Todos";
+    chips.forEach((c) =>
+      c.addEventListener("click", () => {
+        actual = c.dataset.categoria!;
+        aplicar(actual);
+      }),
+    );
+
+    // Estado inicial desde la URL, asi el filtro es compartible
+    const inicial = new URLSearchParams(location.search).get("categoria");
+    if (inicial && chips.some((c) => c.dataset.categoria === inicial)) actual = inicial;
+    aplicar(actual, false);
+
+    // Al cambiar el ancho cambia la altura de cada pieza (la proporcion es
+    // fija pero el ancho de columna no), asi que el balance hay que rehacerlo.
+    let pendiente = 0;
+    window.addEventListener(
+      "resize",
+      () => {
+        clearTimeout(pendiente);
+        pendiente = window.setTimeout(() => aplicar(actual, false), 150);
+      },
+      { passive: true },
+    );
+  }
+</script>

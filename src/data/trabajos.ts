@@ -15,8 +15,11 @@ export interface Trabajo {
   servicios: string[];
   /** Color placeholder. Se va cuando exista `media`. */
   tono: string;
-  /** Ruta al asset final. Todavia no hay ninguno. */
+  /** Ruta al asset. Hoy placeholder; lo reemplaza el del disenador. */
   media?: string;
+  /** Proporcion en la grilla del portfolio. El hero fuerza 16/10 igual
+   *  para todos, pero la masonry necesita variacion para tener sentido. */
+  aspecto: string;
 }
 
 export const TRABAJOS: Trabajo[] = [
@@ -31,6 +34,7 @@ export const TRABAJOS: Trabajo[] = [
     servicios: ["Identidad", "Packaging", "Editorial"],
     tono: "#e7e7e7",
     media: "/placeholders/cafe-mora.jpg",
+    aspecto: "4/5",
   },
   {
     slug: "lume",
@@ -43,6 +47,7 @@ export const TRABAJOS: Trabajo[] = [
     servicios: ["Packaging", "Dirección de arte"],
     tono: "#282828",
     media: "/placeholders/lume.jpg",
+    aspecto: "1/1",
   },
   {
     slug: "estudio-vera",
@@ -55,6 +60,7 @@ export const TRABAJOS: Trabajo[] = [
     servicios: ["Redes sociales", "Sistemas de diseño"],
     tono: "#8800ff",
     media: "/placeholders/estudio-vera.jpg",
+    aspecto: "4/5",
   },
   {
     slug: "norte",
@@ -67,6 +73,7 @@ export const TRABAJOS: Trabajo[] = [
     servicios: ["Identidad", "Web"],
     tono: "#f4f4f4",
     media: "/placeholders/norte.jpg",
+    aspecto: "16/10",
   },
   {
     slug: "rama",
@@ -79,6 +86,7 @@ export const TRABAJOS: Trabajo[] = [
     servicios: ["Editorial", "Dirección de arte"],
     tono: "#444444",
     media: "/placeholders/rama.jpg",
+    aspecto: "3/4",
   },
   {
     slug: "solaz",
@@ -91,6 +99,7 @@ export const TRABAJOS: Trabajo[] = [
     servicios: ["Identidad", "Sistemas de diseño"],
     tono: "#ff5000",
     media: "/placeholders/solaz.jpg",
+    aspecto: "1/1",
   },
   {
     slug: "ancla",
@@ -103,6 +112,7 @@ export const TRABAJOS: Trabajo[] = [
     servicios: ["Sistemas de diseño", "UX/UI"],
     tono: "#e7e7e7",
     media: "/placeholders/ancla.jpg",
+    aspecto: "16/10",
   },
   {
     slug: "bruma",
@@ -115,6 +125,7 @@ export const TRABAJOS: Trabajo[] = [
     servicios: ["Dirección de arte", "Redes sociales"],
     tono: "#282828",
     media: "/placeholders/bruma.jpg",
+    aspecto: "4/5",
   },
   {
     slug: "tinta",
@@ -127,6 +138,7 @@ export const TRABAJOS: Trabajo[] = [
     servicios: ["Identidad", "Redes sociales"],
     tono: "#f4f4f4",
     media: "/placeholders/tinta.jpg",
+    aspecto: "3/4",
   },
   {
     slug: "ruta",
@@ -139,6 +151,7 @@ export const TRABAJOS: Trabajo[] = [
     servicios: ["Señalética", "Sistemas de diseño"],
     tono: "#8800ff",
     media: "/placeholders/ruta.jpg",
+    aspecto: "16/10",
   },
   {
     slug: "pauna",
@@ -151,6 +164,7 @@ export const TRABAJOS: Trabajo[] = [
     servicios: ["Identidad", "Packaging"],
     tono: "#444444",
     media: "/placeholders/pauna.jpg",
+    aspecto: "1/1",
   },
   {
     slug: "cardume",
@@ -163,6 +177,7 @@ export const TRABAJOS: Trabajo[] = [
     servicios: ["Web", "UX/UI"],
     tono: "#f4f4f4",
     media: "/placeholders/cardume.jpg",
+    aspecto: "16/10",
   },
   {
     slug: "sal",
@@ -175,6 +190,7 @@ export const TRABAJOS: Trabajo[] = [
     servicios: ["Packaging", "Sistemas de diseño"],
     tono: "#ff5000",
     media: "/placeholders/sal.jpg",
+    aspecto: "4/5",
   },
   {
     slug: "vidrio",
@@ -187,6 +203,7 @@ export const TRABAJOS: Trabajo[] = [
     servicios: ["Identidad", "Editorial"],
     tono: "#e7e7e7",
     media: "/placeholders/vidrio.jpg",
+    aspecto: "3/4",
   },
   {
     slug: "once",
@@ -199,6 +216,7 @@ export const TRABAJOS: Trabajo[] = [
     servicios: ["Editorial", "Dirección de arte"],
     tono: "#282828",
     media: "/placeholders/once.jpg",
+    aspecto: "1/1",
   },
 ];
 

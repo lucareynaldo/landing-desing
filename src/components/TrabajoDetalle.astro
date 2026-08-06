@@ -216,7 +216,7 @@ const DATOS = TRABAJOS.map((t) => ({
      * el morph arrancara desde un tile fuera de pantalla.
      */
     const buscarTile = (slug) => {
-      const todos = Array.from(document.querySelectorAll(`.marquee-item[data-trabajo="${slug}"]`));
+      const todos = Array.from(document.querySelectorAll(`[data-trabajo="${slug}"]`));
       if (!todos.length) return null;
       let mejor = todos[0];
       let mejorVisible = -1;
@@ -418,8 +418,10 @@ const DATOS = TRABAJOS.map((t) => ({
     }
 
     // --- disparadores ---
+    // Cualquier elemento con data-trabajo abre el detalle: los tiles del
+    // marquee del hero y las piezas de la grilla del portfolio.
     document.addEventListener("click", (e) => {
-      const tile = e.target.closest?.(".marquee-item[data-trabajo]");
+      const tile = e.target.closest?.("[data-trabajo]");
       if (!tile) return;
       // Se abre con CUALQUIER copia, incluida la duplicada del bucle: es la
       // que el usuario esta viendo. Y el morph arranca desde la que clickeo,

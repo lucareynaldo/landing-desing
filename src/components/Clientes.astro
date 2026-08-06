@@ -20,6 +20,11 @@ const LOGOS = [
 const ITEM = 88; // lado de la caja en px
 const GAP = 10;
 const track = [...LOGOS, ...LOGOS]; // duplicado para el bucle
+
+// Rotacion leve por item, como en teamworkgraph: rompe la sensacion de grilla
+// y les da naturalidad. Determinista a partir del indice para que no cambie
+// entre builds, y acotada a +-6 grados: mas que eso se lee como error.
+const rotacion = (i: number) => (((i * 37) % 25) - 12) * 0.5;
 ---
 
 <section id="clientes" class="relative pb-16 pt-24 md:pb-20 md:pt-32">
@@ -42,7 +47,7 @@ const track = [...LOGOS, ...LOGOS]; // duplicado para el bucle
         track.map((nombre, i) => (
           <div
             class="logo-caja grid shrink-0 place-items-center rounded-[22%] bg-white ring-1 ring-ink/10"
-            style={`width:${ITEM}px; height:${ITEM}px;`}
+            style={`width:${ITEM}px; height:${ITEM}px; --rot:${rotacion(i).toFixed(1)}deg;`}
             title={nombre}
             aria-hidden={i >= LOGOS.length ? "true" : undefined}
           >
@@ -73,6 +78,9 @@ const track = [...LOGOS, ...LOGOS]; // duplicado para el bucle
   }
   .logo-caja {
     transform-origin: 50% 50%;
+    /* Estado sin JS: la rotacion ya aplicada. El loop la vuelve a componer
+       junto con la escala, leyendo la misma custom property. */
+    transform: rotate(var(--rot, 0deg));
     box-shadow: 0 2px 10px rgb(0 0 0 / 0.05);
 
     /* La caja se mantiene en su propia capa de composicion. Sin esto el
@@ -160,7 +168,9 @@ const track = [...LOGOS, ...LOGOS]; // duplicado para el bucle
         const caja = cajas[i];
         // Escribir solo si cambio: evita invalidar estilo 32 veces por frame.
         if (escala !== escalaPrev[i]) {
-          caja.style.transform = `scale(${escala})`;
+          // La rotacion se toma de la custom property, asi vive en un solo
+          // lugar y el estado sin JS ya la tiene aplicada.
+          caja.style.transform = `rotate(var(--rot, 0deg)) scale(${escala})`;
           escalaPrev[i] = escala;
         }
         // z-index en escalones gruesos. Antes se reescribia cada frame con

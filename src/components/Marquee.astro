@@ -43,7 +43,15 @@ const track = [...items, ...items];
             tabindex={copia ? -1 : undefined}
             aria-label={`Ver ${t.cliente}: ${t.titulo}`}
           >
-            {/* Placeholder hasta que el diseñador entregue los assets */}
+            {t.media && (
+              <img
+                src={t.media}
+                alt=""
+                loading={i < 4 ? "eager" : "lazy"}
+                decoding="async"
+                class="pointer-events-none absolute inset-0 size-full object-cover"
+              />
+            )}
             <span class="type-meta absolute bottom-2.5 left-2.5 rounded-full bg-surface/75 px-2 py-1 text-[0.6rem] text-ink backdrop-blur-sm">
               {t.categoria} · {t.cliente}
             </span>

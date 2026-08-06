@@ -30,6 +30,7 @@ export const TRABAJOS: Trabajo[] = [
     anio: "2026",
     servicios: ["Identidad", "Packaging", "Editorial"],
     tono: "#e7e7e7",
+    media: "/placeholders/cafe-mora.jpg",
   },
   {
     slug: "lume",
@@ -41,6 +42,7 @@ export const TRABAJOS: Trabajo[] = [
     anio: "2026",
     servicios: ["Packaging", "Dirección de arte"],
     tono: "#282828",
+    media: "/placeholders/lume.jpg",
   },
   {
     slug: "estudio-vera",
@@ -52,6 +54,7 @@ export const TRABAJOS: Trabajo[] = [
     anio: "2025",
     servicios: ["Redes sociales", "Sistemas de diseño"],
     tono: "#8800ff",
+    media: "/placeholders/estudio-vera.jpg",
   },
   {
     slug: "norte",
@@ -63,6 +66,7 @@ export const TRABAJOS: Trabajo[] = [
     anio: "2025",
     servicios: ["Identidad", "Web"],
     tono: "#f4f4f4",
+    media: "/placeholders/norte.jpg",
   },
   {
     slug: "rama",
@@ -74,6 +78,7 @@ export const TRABAJOS: Trabajo[] = [
     anio: "2025",
     servicios: ["Editorial", "Dirección de arte"],
     tono: "#444444",
+    media: "/placeholders/rama.jpg",
   },
   {
     slug: "solaz",
@@ -85,6 +90,7 @@ export const TRABAJOS: Trabajo[] = [
     anio: "2025",
     servicios: ["Identidad", "Sistemas de diseño"],
     tono: "#ff5000",
+    media: "/placeholders/solaz.jpg",
   },
   {
     slug: "ancla",
@@ -96,6 +102,7 @@ export const TRABAJOS: Trabajo[] = [
     anio: "2025",
     servicios: ["Sistemas de diseño", "UX/UI"],
     tono: "#e7e7e7",
+    media: "/placeholders/ancla.jpg",
   },
   {
     slug: "bruma",
@@ -107,6 +114,7 @@ export const TRABAJOS: Trabajo[] = [
     anio: "2025",
     servicios: ["Dirección de arte", "Redes sociales"],
     tono: "#282828",
+    media: "/placeholders/bruma.jpg",
   },
   {
     slug: "tinta",
@@ -118,6 +126,7 @@ export const TRABAJOS: Trabajo[] = [
     anio: "2024",
     servicios: ["Identidad", "Redes sociales"],
     tono: "#f4f4f4",
+    media: "/placeholders/tinta.jpg",
   },
   {
     slug: "ruta",
@@ -129,6 +138,7 @@ export const TRABAJOS: Trabajo[] = [
     anio: "2024",
     servicios: ["Señalética", "Sistemas de diseño"],
     tono: "#8800ff",
+    media: "/placeholders/ruta.jpg",
   },
   {
     slug: "pauna",
@@ -140,6 +150,7 @@ export const TRABAJOS: Trabajo[] = [
     anio: "2024",
     servicios: ["Identidad", "Packaging"],
     tono: "#444444",
+    media: "/placeholders/pauna.jpg",
   },
   {
     slug: "cardume",
@@ -151,6 +162,7 @@ export const TRABAJOS: Trabajo[] = [
     anio: "2024",
     servicios: ["Web", "UX/UI"],
     tono: "#f4f4f4",
+    media: "/placeholders/cardume.jpg",
   },
   {
     slug: "sal",
@@ -162,6 +174,7 @@ export const TRABAJOS: Trabajo[] = [
     anio: "2024",
     servicios: ["Packaging", "Sistemas de diseño"],
     tono: "#ff5000",
+    media: "/placeholders/sal.jpg",
   },
   {
     slug: "vidrio",
@@ -173,6 +186,7 @@ export const TRABAJOS: Trabajo[] = [
     anio: "2024",
     servicios: ["Identidad", "Editorial"],
     tono: "#e7e7e7",
+    media: "/placeholders/vidrio.jpg",
   },
   {
     slug: "once",
@@ -184,6 +198,7 @@ export const TRABAJOS: Trabajo[] = [
     anio: "2023",
     servicios: ["Editorial", "Dirección de arte"],
     tono: "#282828",
+    media: "/placeholders/once.jpg",
   },
 ];
 

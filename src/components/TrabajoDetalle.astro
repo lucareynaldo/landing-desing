@@ -177,6 +177,19 @@ const DATOS = TRABAJOS.map((t) => ({
     let tileOrigen = null;
     let focoPrevio = null;
 
+    // Cada apertura y cada cierre incrementa la generacion. Todo callback
+    // asincrono (animation.finished, setTimeout) verifica que su generacion
+    // siga siendo la vigente antes de tocar nada. Sin esto, un cierre lento
+    // puede terminar encima de una apertura nueva y dejar el estado partido:
+    // el media visible con el panel y el fondo ya desvanecidos.
+    let generacion = 0;
+
+    /** Corre una animacion cancelando cualquier otra previa del mismo elemento. */
+    const animar = (el, keyframes, opciones) => {
+      el.getAnimations().forEach((a) => a.cancel());
+      return el.animate(keyframes, opciones);
+    };
+
     /**
      * Congela o reanuda las filas del carrusel.
      * El grid de recent.design es estatico, asi que su morph de cierre siempre
@@ -242,9 +255,13 @@ const DATOS = TRABAJOS.map((t) => ({
 
       abierto = true;
       indice = i;
+      generacion++;
       focoPrevio = document.activeElement;
 
       congelarCarrusel(true);
+      // Bloquea el scroll de la pagina: Lenis sigue vivo debajo y si no,
+      // la rueda del mouse sobre el detalle mueve el carrusel de atras.
+      document.documentElement.style.overflow = "hidden";
       document.body.setAttribute("data-detalle-abierto", "");
       pintar(d);
       marcarOrigen(tile);
@@ -263,17 +280,19 @@ const DATOS = TRABAJOS.map((t) => ({
       if (quieto) {
         ponerCaja(r1);
       } else {
-        media.animate(
+        animar(
+          media,
           [
             { left: `${r0.left}px`, top: `${r0.top}px`, width: `${r0.width}px`, height: `${r0.height}px` },
             { left: `${r1.left}px`, top: `${r1.top}px`, width: `${r1.width}px`, height: `${r1.height}px` },
           ],
-          { duration: D_MORPH, easing: EASE, fill: "forwards" },
+          { duration: D_MORPH, easing: EASE },
         );
         ponerCaja(r1);
 
-        fondo.animate([{ opacity: 0 }, { opacity: 1 }], { duration: D_CONTENIDO, easing: EASE });
-        panel.animate(
+        animar(fondo, [{ opacity: 0 }, { opacity: 1 }], { duration: D_CONTENIDO, easing: EASE });
+        animar(
+          panel,
           [
             { opacity: 0, transform: "translateX(-12px)" },
             { opacity: 1, transform: "translateX(0)" },
@@ -291,35 +310,48 @@ const DATOS = TRABAJOS.map((t) => ({
     function cerrar(conHistoria = true) {
       if (!abierto) return;
       abierto = false;
+      generacion++;
+      const mia = generacion;
 
-      const r1 = {
-        left: parseFloat(media.style.left),
-        top: parseFloat(media.style.top),
-        width: parseFloat(media.style.width),
-        height: parseFloat(media.style.height),
-      };
+      // Caja REAL en este instante, no la del estilo inline. Si el cierre
+      // llega en pleno morph de apertura, el estilo inline ya dice el destino
+      // final mientras el elemento todavia esta a mitad de camino: arrancar
+      // de ahi produciria un salto visible.
+      const vr = media.getBoundingClientRect();
+      const r1 = { left: vr.left, top: vr.top, width: vr.width, height: vr.height };
       const r0 = tileOrigen ? tileOrigen.getBoundingClientRect() : null;
 
+      let listo = false;
       const terminar = () => {
+        // Un cierre viejo no puede pisar una apertura nueva.
+        if (listo || generacion !== mia) return;
+        listo = true;
         raiz.classList.add("hidden");
         marcarOrigen(null);
         congelarCarrusel(false);
+        document.documentElement.style.overflow = "";
         document.body.removeAttribute("data-detalle-abierto");
+        // Se limpia el estado del media: nada sobrevive al proximo ciclo.
+        media.getAnimations().forEach((a) => a.cancel());
+        media.removeAttribute("style");
+        media.innerHTML = "";
         if (focoPrevio && document.contains(focoPrevio)) focoPrevio.focus({ preventScroll: true });
       };
 
       if (quieto || !r0) {
         terminar();
       } else {
-        fondo.animate([{ opacity: 1 }, { opacity: 0 }], { duration: D_CONTENIDO, easing: EASE, fill: "forwards" });
-        panel.animate(
+        animar(fondo, [{ opacity: 1 }, { opacity: 0 }], { duration: D_CONTENIDO, easing: EASE, fill: "forwards" });
+        animar(
+          panel,
           [
             { opacity: 1, transform: "translateX(0)" },
             { opacity: 0, transform: "translateX(-12px)" },
           ],
           { duration: D_CONTENIDO, easing: EASE, fill: "forwards" },
         );
-        const a = media.animate(
+        const a = animar(
+          media,
           [
             { left: `${r1.left}px`, top: `${r1.top}px`, width: `${r1.width}px`, height: `${r1.height}px` },
             { left: `${r0.left}px`, top: `${r0.top}px`, width: `${r0.width}px`, height: `${r0.height}px` },
@@ -327,6 +359,10 @@ const DATOS = TRABAJOS.map((t) => ({
           { duration: D_MORPH, easing: EASE, fill: "forwards" },
         );
         a.finished.then(terminar).catch(terminar);
+        // Red de seguridad: si `finished` no llega (animacion descartada por
+        // el navegador, pestaña en segundo plano, keyframe invalido), el
+        // overlay quedaria colgado con el media a la vista. Esto lo cierra igual.
+        setTimeout(terminar, D_MORPH + 200);
       }
 
       if (conHistoria && location.search.includes("trabajo=")) history.back();
@@ -335,18 +371,23 @@ const DATOS = TRABAJOS.map((t) => ({
     /** Salta a otro trabajo sin cerrar: cambia contenido y reencaja el media. */
     function saltar(paso) {
       if (!abierto) return;
+      const mia = generacion;
       const i = (indice + paso + DATOS.length) % DATOS.length;
       const d = DATOS[i];
       indice = i;
 
       const opciones = { duration: D_CONTENIDO, easing: EASE };
-      if (!quieto) contenido.animate([{ opacity: 1 }, { opacity: 0 }], opciones);
+      if (!quieto) animar(contenido, [{ opacity: 1 }, { opacity: 0 }], opciones);
 
       setTimeout(
         () => {
+          // Si cerraron mientras corria el crossfade, este timeout no debe
+          // repintar ni volver a marcar un tile como origen: dejaria un tile
+          // invisible para siempre.
+          if (generacion !== mia || !abierto) return;
           pintar(d);
           marcarOrigen(buscarTile(d.slug));
-          if (!quieto) contenido.animate([{ opacity: 0 }, { opacity: 1 }], opciones);
+          if (!quieto) animar(contenido, [{ opacity: 0 }, { opacity: 1 }], opciones);
         },
         quieto ? 0 : D_CONTENIDO,
       );

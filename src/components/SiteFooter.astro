@@ -24,8 +24,8 @@ const UPDATED = "Agosto 2026";
 >
   {/* Grilla de fondo. Ver el bloque de estilos al final del archivo. */}
   <div class="footer-bg pointer-events-none absolute inset-0" aria-hidden="true">
-    <div class="grilla grilla-tenue"></div>
-    <div class="grilla-foco"><div class="grilla"></div></div>
+    <div class="grilla grilla-tenue"><div class="lineas"></div></div>
+    <div class="grilla-foco"><div class="grilla"><div class="lineas"></div></div></div>
   </div>
 
   {/* --- Esquinas superiores --- */}
@@ -131,7 +131,39 @@ const UPDATED = "Agosto 2026";
     mask-image: radial-gradient(ellipse 85% 70% at 50% 45%, #000 25%, transparent 100%);
   }
 
+  /* Puntea las lineas: 1px de marca y 2px de hueco, como el original.
+     Es el detalle que hace que la grilla se lea como textura y no como un
+     dibujo.
+
+     Puntear pide INTERSECAR el rayado con las lineas, y las capas de
+     mask-image se unen, no se intersecan. mask-composite: intersect lo haria,
+     pero en Chrome recien llego en la 120 y ademas no alcanza: harian falta
+     dos intersecciones y una union entre ellas, que no se puede expresar en
+     una sola lista. Anidar mascaras SI es interseccion, y sale gratis.
+
+     El rayado va a 45 grados para resolverlo con un solo elemento: una
+     diagonal corta por igual a las verticales y a las horizontales. Un rayado
+     de un solo eje dejaria continuas las lineas del otro. */
   .grilla {
+    position: absolute;
+    inset: 0;
+
+    /* El periodo se divide por raiz de 2 porque la diagonal cruza los ejes a
+       45 grados: 3px medidos sobre la diagonal serian 4.24px sobre la
+       vertical. Asi el hueco queda en los 3px del original. */
+    -webkit-mask-image: repeating-linear-gradient(
+      45deg,
+      #000 0 1px,
+      transparent 1px calc(3px / 1.414)
+    );
+    mask-image: repeating-linear-gradient(
+      45deg,
+      #000 0 1px,
+      transparent 1px calc(3px / 1.414)
+    );
+  }
+
+  .lineas {
     position: absolute;
     inset: 0;
 
@@ -143,7 +175,7 @@ const UPDATED = "Agosto 2026";
        las manchas solas quedaba una franja muerta en el medio, entre donde
        dejaban de alcanzar las de arriba y donde empezaban las de abajo. El
        gris llena el hueco y las manchas lo tiñen encima. */
-    background-color: hsla(222, 6%, 55%, 0.5);
+    background-color: hsla(222, 6%, 55%, 0.65);
 
     /* Las manchas de color, en los acentos de la marca. Los radios son
        generosos a proposito: con 40% de alto las de arriba y las de abajo no
@@ -155,7 +187,8 @@ const UPDATED = "Agosto 2026";
       radial-gradient(55% 50% at 80% 80%, var(--color-accent-warm) 0%, transparent 70%);
 
     /* Las dos capas de mascara se componen con `add`, que es la union: una
-       aporta las verticales y la otra las horizontales. */
+       aporta las verticales y la otra las horizontales. El punteado lo pone
+       la mascara del padre. */
     -webkit-mask-image:
       repeating-linear-gradient(90deg, #000 0 1px, transparent 1px var(--celda)),
       repeating-linear-gradient(180deg, #000 0 1px, transparent 1px var(--celda));
@@ -165,9 +198,12 @@ const UPDATED = "Agosto 2026";
   }
 
   /* La base, siempre presente: le da textura al footer aunque nadie pase el
-     mouse, que es lo que sostiene el efecto en tactil y en teclado. */
+     mouse, que es lo que sostiene el efecto en tactil y en teclado.
+
+     Subio de 0.22 al puntear: el rayado se lleva cerca de dos tercios de la
+     tinta, asi que a la opacidad de antes la grilla quedaba casi invisible. */
   .grilla-tenue {
-    opacity: 0.22;
+    opacity: 0.34;
   }
 
   /* La misma grilla a full, recortada a un circulo pegado al cursor. */

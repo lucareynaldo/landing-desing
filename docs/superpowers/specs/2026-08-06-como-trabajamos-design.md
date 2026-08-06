@@ -112,14 +112,24 @@ de scroll rateado a un frame con `requestAnimationFrame` e `IntersectionObserver
 para no calcular cuando la sección no se ve. Es el mecanismo que ya corre en
 `PainPoint.astro`; se sigue ese patrón en lugar de inventar uno nuevo.
 
-Mapeo de partida, a ajustar a ojo:
+Se mide el **gráfico**, no la sección:
 
 ```
-p = (vh * 0.8 - r.top) / (r.height * 0.75)
+inicio = vh * 0.7            // top del grafico cuando p = 0
+fin    = vh * 0.6 - altura   // top del grafico cuando p = 1
+p      = (inicio - r.top) / (inicio - fin)
 ```
 
-acotado a [0, 1]. `--p` vale 0 cuando el borde superior de la sección cruza el
-80% de la altura del viewport, y llega a 1 con la sección casi entera a la vista.
+acotado a [0, 1]. Arranca con el borde superior del gráfico al 70% de la
+pantalla — ahí ya se ve la primera fila, así que el primer nodo aparece a la
+vista — y termina con el borde inferior al 60%, con el gráfico entero visible y
+con aire.
+
+> Revisión posterior a la primera implementación. La versión original medía la
+> **sección**, cuyo borde superior está unos 250px arriba del gráfico por el
+> header y el padding. El camino se dibujaba con el gráfico todavía abajo del
+> pliegue, y cuando aparecía en pantalla ya iba por el noveno nodo. La referencia
+> tiene que ser lo que el visitante mira, no el contenedor que lo envuelve.
 
 ### Todo lo demás lo hace el CSS
 
@@ -166,8 +176,11 @@ entrega — y abren y cierran en el violeta de la marca. El nodo recién llegado
 suma un lavado del 8% de su color en el fondo, para tener cuerpo y no solo un
 borde de color.
 
-Los vértices son de 2px y no de 1: a un pixel el color casi no se ve y el tramo
-queda como una línea gris con una idea de color.
+**Vértices.** Línea de 1px y una punta de flecha en el extremo de llegada, que
+es siempre el opuesto al `transform-origin` de la línea. La punta es un cuadrado
+de 5px con dos bordes, girado: el vértice donde se cruzan es el que apunta.
+Aparece en el último cuarto del trazo (`clamp(0, local * 4 - 3, 1)`) — antes de
+eso flotaría separada, adelante de la línea, como si no fueran la misma cosa.
 
 **Bloque de contacto.** Índice 19, así que se enciende último, después de que la
 línea llegó a `Entrega final`. Tratamiento distinto al de un nodo porque es un

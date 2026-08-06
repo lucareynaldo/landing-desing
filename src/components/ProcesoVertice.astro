@@ -1,8 +1,8 @@
 ---
-// Un tramo de linea entre dos nodos.
+// Un tramo de linea entre dos nodos, con una punta de flecha en la llegada.
 //
-// La linea es un ::before y no el <li> mismo, para poder centrarla en la celda
-// sin tocar la caja que ocupa en el grid.
+// La linea es un ::before y la flecha un ::after, en vez de ser el <li> mismo,
+// para poder centrarlos en la celda sin tocar la caja que ocupa en el grid.
 //
 // La direccion decide el eje del scale y, sobre todo, el transform-origin: el
 // tramo tiene que crecer desde el lado por el que ENTRA la linea. Los de la
@@ -39,38 +39,60 @@ const { indice, direccion, tono, col, fila } = Astro.props;
     position: relative;
     min-height: 2rem;
     list-style: none;
+
+    /* Color del nodo del que sale, apagandose a tinta con la estela. Lo
+       comparten la linea y la flecha. */
+    --trazo: color-mix(
+      in srgb,
+      var(--tono),
+      var(--color-ink-strong) calc(var(--estela, 0) * 100%)
+    );
   }
 
+  /* --- La linea --- */
   /* Base = movil: en una sola columna TODOS los tramos son verticales,
      incluidos los que en desktop van de costado. */
   .proceso-vertice::before {
     content: "";
     position: absolute;
-    /* Mismo color que el nodo del que sale, apagandose a tinta con la estela.
-       2px y no 1: a un pixel el color casi no se ve y el tramo queda como una
-       linea gris con una idea de color. */
-    background: color-mix(
-      in srgb,
-      var(--tono),
-      var(--color-ink-strong) calc(var(--estela, 0) * 100%)
-    );
+    background: var(--trazo);
     top: 0;
     bottom: 0;
-    left: calc(50% - 1px);
-    width: 2px;
+    left: calc(50% - 0.5px);
+    width: 1px;
     scale: 1 var(--local, 0);
     transform-origin: center top;
+  }
+
+  /* --- La punta de flecha --- */
+  /* Un cuadrado con dos bordes, girado: el vertice donde se cruzan apunta.
+     Aparece en el ultimo cuarto del trazo (de ahi el *4 - 3): antes de eso
+     flotaria adelante de la linea, separada, como si no fueran la misma cosa. */
+  .proceso-vertice::after {
+    content: "";
+    position: absolute;
+    width: 5px;
+    height: 5px;
+    border-top: 1px solid var(--trazo);
+    border-right: 1px solid var(--trazo);
+    opacity: clamp(0, calc(var(--local, 0) * 4 - 3), 1);
+
+    /* Base = movil: apunta hacia abajo. */
+    bottom: 1px;
+    left: 50%;
+    translate: -50% 0;
+    rotate: 135deg;
   }
 
   @media (min-width: 768px) {
     .proceso-vertice[data-direccion="derecha"]::before,
     .proceso-vertice[data-direccion="izquierda"]::before {
-      top: calc(50% - 1px);
+      top: calc(50% - 0.5px);
       bottom: auto;
       left: 0;
       right: 0;
       width: auto;
-      height: 2px;
+      height: 1px;
       scale: var(--local, 0) 1;
     }
 
@@ -80,6 +102,27 @@ const { indice, direccion, tono, col, fila } = Astro.props;
 
     .proceso-vertice[data-direccion="izquierda"]::before {
       transform-origin: right center;
+    }
+
+    /* La flecha va SIEMPRE en el extremo de llegada, que es el opuesto al
+       transform-origin de la linea. */
+    .proceso-vertice[data-direccion="derecha"]::after,
+    .proceso-vertice[data-direccion="izquierda"]::after {
+      bottom: auto;
+      top: 50%;
+      translate: 0 -50%;
+    }
+
+    .proceso-vertice[data-direccion="derecha"]::after {
+      left: auto;
+      right: 1px;
+      rotate: 45deg;
+    }
+
+    .proceso-vertice[data-direccion="izquierda"]::after {
+      left: 1px;
+      right: auto;
+      rotate: -135deg;
     }
   }
 </style>

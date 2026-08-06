@@ -251,11 +251,23 @@ const CADENA: EnCadena[] = PROCESO.flatMap((etapa, i) => {
 
       const pintar = () => {
         pendiente = false;
-        const r = seccion.getBoundingClientRect();
-        // 0 cuando el borde superior cruza el 80% de la pantalla; 1 con la
-        // seccion casi entera a la vista. El 0.75 deja que el camino termine
-        // de dibujarse antes de que la seccion empiece a irse por arriba.
-        const bruto = (window.innerHeight * 0.8 - r.top) / (r.height * 0.75);
+        // Se mide el GRAFICO, no la seccion. Midiendo la seccion el recorrido
+        // arrancaba en su borde superior, que esta ~250px arriba del grafico
+        // por el header y el padding: el camino se dibujaba con el grafico
+        // todavia abajo del pliegue y cuando aparecia en pantalla ya iba por
+        // el noveno nodo.
+        const r = grid.getBoundingClientRect();
+        const vh = window.innerHeight;
+
+        // Arranca con el borde de arriba del grafico al 70% de la pantalla:
+        // ahi ya se ve la primera fila, asi que el primer nodo aparece a la
+        // vista y no antes.
+        const inicio = vh * 0.7;
+        // Termina con el borde de abajo al 60%: el grafico entero a la vista y
+        // con aire, no apenas entrando.
+        const fin = vh * 0.6 - r.height;
+
+        const bruto = (inicio - r.top) / Math.max(1, inicio - fin);
         grid.style.setProperty("--p", String(Math.min(1, Math.max(0, bruto))));
       };
 

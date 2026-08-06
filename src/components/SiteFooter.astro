@@ -219,12 +219,24 @@ const UPDATED = "Agosto 2026";
       }
     };
 
+    // "Destapado" NO es lo mismo que "intersectando".
+    //
+    // El centinela entra en pantalla mientras la lamina se esta yendo, pero si
+    // se sigue scrolleando termina de salir por arriba, y ahi isIntersecting
+    // vuelve a false. Mirando solo eso, el efecto se apagaba justo cuando el
+    // footer quedaba del todo a la vista y solo andaba durante el pasaje.
+    //
+    // Tambien esta destapado cuando el centinela ya paso de largo hacia
+    // arriba, o sea con su borde superior en negativo.
+    const destapado = (e: IntersectionObserverEntry) =>
+      e.isIntersecting || e.boundingClientRect.top < 0;
+
     // Mover la mascara repinta la capa entera, asi que es la parte cara de
     // esto y no tiene sentido pagarla mientras el footer esta tapado. El
-    // listener se da de alta y de baja con la visibilidad, en vez de quedar
+    // listener se da de alta y de baja con esa señal, en vez de quedar
     // siempre puesto preguntando si corresponde.
     new IntersectionObserver((entradas) => {
-      if (entradas[0].isIntersecting) {
+      if (destapado(entradas[0])) {
         window.addEventListener("pointermove", mover, { passive: true });
       } else {
         window.removeEventListener("pointermove", mover);

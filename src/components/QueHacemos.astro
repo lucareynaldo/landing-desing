@@ -101,9 +101,21 @@ for (let i = 0; i < LOGOS.length; i++) {
 const NODOS = puestos.map((p, i) => ({ ...p, logo: LOGOS[i] }));
 ---
 
+{/*
+  El recorte es `clip`, no `hidden`, con un margen de 200px.
+
+  Con `hidden` la seccion cortaba el logo apenas se lo arrastraba cerca de un
+  borde, y se leia como bug. Sacar el recorte del todo no sirve: un nodo
+  arrastrado hacia la derecha genera scroll horizontal en toda la pagina.
+  `overflow: clip` recorta sin volverse contenedor de scroll (nunca aparece
+  barra) y `overflow-clip-margin` corre ese borde 200px hacia afuera, que es
+  mas que el maximo que puede alejarse un nodo (TOPE=150 es una asintota, mas
+  el empuje y el escalado de hover). En navegadores sin soporte para el margen
+  degrada a recortar en el padding box, o sea al comportamiento de antes.
+*/}
 <section
   id="que-hacemos"
-  class="relative isolate flex min-h-[92vh] items-center overflow-hidden px-6 py-24 md:px-10 md:py-32"
+  class="relative isolate flex min-h-[92vh] items-center overflow-clip [overflow-clip-margin:200px] px-6 py-24 md:px-10 md:py-32"
   data-icon-field
 >
   {/* --- Campo de logos --- */}

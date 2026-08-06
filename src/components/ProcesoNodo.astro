@@ -1,0 +1,66 @@
+---
+// Una etapa del camino. No sabe que existe un camino: solo se pinta mas o
+// menos encendida segun --local, que le llega heredada desde la seccion.
+
+interface Props {
+  n: string;
+  nombre: string;
+  /** Posicion en la cadena de 20 elementos: define cuando le toca encenderse. */
+  indice: number;
+  /** Celda del grid en desktop. En movil no se usa: cae por orden del DOM. */
+  col: number;
+  fila: number;
+}
+
+const { n, nombre, indice, col, fila } = Astro.props;
+---
+
+<li
+  class="proceso-celda proceso-nodo"
+  style={`--i:${indice}; --col:${col}; --fila:${fila};`}
+>
+  <span class="proceso-n type-meta">{n}</span>
+  <span class="proceso-nombre type-display">{nombre}</span>
+</li>
+
+<style>
+  .proceso-nodo {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    padding: 0.9rem 1.1rem;
+    border: 1px solid;
+    border-radius: 0.75rem;
+    background: var(--color-surface);
+    list-style: none;
+
+    /* Tres veces mas rapido que su tramo de la cadena. A la velocidad del
+       tramo el nodo se va tiñendo despacio y se lee como una mancha que crece;
+       asi se enciende con decision, que es lo que tiene que comunicar una
+       etapa que se activa. */
+    --encendido: clamp(0, calc(var(--local, 0) * 3), 1);
+
+    border-color: color-mix(
+      in srgb,
+      var(--color-surface-3),
+      var(--color-ink-strong) calc(var(--encendido) * 100%)
+    );
+  }
+
+  .proceso-n {
+    color: color-mix(
+      in srgb,
+      var(--color-surface-3),
+      var(--color-ink-muted) calc(var(--encendido) * 100%)
+    );
+  }
+
+  .proceso-nombre {
+    font-size: clamp(0.95rem, 1.25vw, 1.2rem);
+    color: color-mix(
+      in srgb,
+      var(--color-ink-muted),
+      var(--color-ink-strong) calc(var(--encendido) * 100%)
+    );
+  }
+</style>

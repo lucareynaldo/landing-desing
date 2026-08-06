@@ -20,7 +20,7 @@ const [fila1, fila2, fila3] = filasDelHero();
     abajo no se mueve. El alto en vh es lo que hace que el titular quede
     justo asomando al pie del viewport en desktop.
   */}
-  <div class="hero-banda overflow-hidden" data-hero-banda>
+  <div class="hero-banda" data-hero-banda>
     <div class="hero-filas flex flex-col gap-3 md:gap-4" data-hero-filas>
       <Marquee items={fila1} direction="left" duration={70} height="clamp(120px, 30vh, 350px)" />
       <Marquee items={fila2} direction="right" duration={85} height="clamp(100px, 24.5vh, 290px)" />
@@ -55,6 +55,17 @@ const [fila1, fila2, fila3] = filasDelHero();
 </section>
 
 <style>
+  /* La banda recorta el zoom del scroll. Las filas ya sobresalen 16px por
+     lado para dejar crecer la card en el hover, asi que la banda tiene que
+     recortar 16px mas afuera o volveria a comerse el borde de la primera y
+     la ultima fila. Mismo truco: padding para correr el borde de recorte,
+     margen negativo para que el layout quede igual. */
+  .hero-banda {
+    overflow: hidden;
+    padding-block: 16px;
+    margin-block: -16px;
+  }
+
   .hero-filas {
     transform: scale(var(--hero-escala, 1));
     transform-origin: 50% 42%;

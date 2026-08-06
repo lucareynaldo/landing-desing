@@ -196,6 +196,97 @@ Ninguna es gratuita. Como los tokens de readymag son prestados hasta que exista 
 
 ---
 
+# Auditoría profunda de recent.design (fase 2)
+
+Sin source maps, así que todo lo de abajo sale de inspeccionar el DOM en
+runtime y medir frame a frame, no de leer el fuente.
+
+## Stack
+
+Vite + React + Tailwind + **TanStack Router** + **Motion**.
+
+Dos detecciones que necesitaron cuidado:
+
+- El `startViewTransition` que aparece en el bundle **no es código propio**: es
+  el soporte integrado de TanStack Router (se delata por `__TSR_key`,
+  `defaultViewTransition`, `isViewTransitionTypesSupported`). Y el CSS tiene
+  **cero** declaraciones `view-transition-name`, así que la API está
+  disponible pero no se usa para el morph.
+- Motion no aparece por nombre, pero sí su firma: animaciones WAAPI con
+  easing `linear(0 0%, ... 1.0388 49.99%, ... 1 100%)`. Ese sobrepaso de
+  1.0388 es un **spring compilado a `linear()`**, que es exactamente lo que
+  hace Motion.
+
+## Tokens
+
+| Token | Valor |
+|---|---|
+| `--ease-out` | `cubic-bezier(.16, 1, .3, 1)` |
+| `--ease-standard` | `cubic-bezier(.2, 0, 0, 1)` |
+| `--duration-fast` | `120ms` |
+| `--duration-base` | `180ms` |
+| `--duration-slow` | `280ms` |
+
+**La fluidez no viene de que sea suave: viene de que es rapidísimo.**
+120–280ms contra los 400ms de sethlukin.
+
+## Arquitectura de los dos modos
+
+El hallazgo central: **el grid nunca se desmonta ni se toca**. Medido en
+pleno detalle, sigue con `opacity: 1`, `filter: none`, `pointer-events: auto`.
+
+El detalle es una capa `position: fixed` en `z-50` montada encima, que ocupa
+desde el borde del sidebar hasta la derecha. Dentro de ella:
+
+- una capa de `backdrop-filter: blur(8px)` con fondo al 70% que desenfoca el
+  grid **por detrás** — el desenfoque no se le aplica al grid
+- el media del proyecto como elemento absoluto
+
+Consecuencia práctica: la posición de scroll del grid se conserva **gratis**,
+sin código de restauración, porque el grid nunca se fue.
+
+## El morph, medido frame a frame
+
+| Frame | Caja del media |
+|---|---|
+| thumbnail original | `[268, 100, 276, 242]` |
+| 0 | `[268, 100, 276, 242]` |
+| 6 | `[584, 146, 598, 523]` |
+| 12 | `[658, 157, 674, 590]` |
+| final | `[656, 156, 672, 588]` |
+
+Arranca **exactamente** en la caja del thumbnail y llega en ~190ms. Es FLIP.
+
+**El detalle que más importa: `transform` vale `none` en todos los frames.**
+No animan transform, animan la geometría real (`left/top/width/height`).
+
+Un FLIP con `transform: scale()` deformaría el contenido — estirar un
+thumbnail de 276px hasta 672px chupa la imagen. Animando la geometría real,
+el `object-cover` del media se recalcula en cada frame y la imagen se ve
+correcta todo el tiempo. Pagan layout por frame en un elemento a cambio de
+que no haya distorsión. Por eso se ve fluido y no se ve como un zoom.
+
+## Cierre y ruteo
+
+- URL real por proyecto: `/i/<slug>`, vía History API. Compartible, y el
+  botón atrás del navegador funciona.
+- Al cerrar, el morph corre al revés hasta la caja exacta del thumbnail
+  (`[273,100,281,246]` → `[268,99,276,242]`) y recién ahí se desmonta la capa.
+- El detalle trae flechas de anterior/siguiente, así que se puede recorrer el
+  catálogo sin volver al grid.
+
+## Qué significa para nosotros
+
+Nada de esto necesita WebGL ni des-minificación. Se reproduce con:
+
+1. Grid siempre montado; el detalle como capa `fixed` encima.
+2. Desenfoque con `backdrop-filter`, nunca `filter` sobre el grid.
+3. FLIP animando geometría real, no transform.
+4. Duraciones cortas (180–280ms) con `cubic-bezier(.16, 1, .3, 1)`.
+5. Ruta propia por proyecto con History API.
+
+---
+
 ## Sobre qué tomamos de estos sitios
 
 Los valores medidos (tamaños, curvas, duraciones, colores) y las técnicas identificadas son terreno normal de ingeniería inversa. Dos cosas quedan fuera:

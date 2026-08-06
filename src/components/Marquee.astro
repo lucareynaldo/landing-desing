@@ -1,23 +1,29 @@
 ---
+import type { Trabajo } from "../data/trabajos";
+
 // Fila de marquee horizontal. CSS puro: la pista se duplica y se desplaza
 // exactamente -50%, con lo que el bucle es continuo sin JS ni saltos.
 //
 // Los tiles son TODOS de la misma proporcion, como en readymag: la variacion
 // de tamaño viene de la fila, no de la pieza. Eso es lo que hace que se lea
 // como un sistema y no como un collage.
+//
+// Cada tile es un <button> que dispara la vista detalle. Solo la primera
+// copia de la pista es interactiva: la segunda existe unicamente para cerrar
+// el bucle y va marcada como aria-hidden e inerte.
 
 interface Props {
-  items: { id: string; label: string; tone: string }[];
+  items: Trabajo[];
   direction?: "left" | "right";
   duration?: number; // segundos por vuelta completa
   height: string; // alto de la fila; lo decide el hero
 }
 
 const { items, direction = "left", duration = 60, height } = Astro.props;
-const track = [...items, ...items]; // duplicado para el bucle
+const track = [...items, ...items];
 ---
 
-<div class="marquee group relative overflow-hidden">
+<div class="marquee group relative overflow-hidden" data-marquee>
   <div
     class="marquee-track flex w-max gap-3 md:gap-4"
     style={`--marquee-duration:${duration}s; --marquee-direction:${
@@ -25,18 +31,25 @@ const track = [...items, ...items]; // duplicado para el bucle
     };`}
   >
     {
-      track.map((item, i) => (
-        <figure
-          class="marquee-item relative m-0 shrink-0 overflow-hidden rounded-2xl"
-          style={`aspect-ratio: 16 / 10; height:${height}; background-color:${item.tone};`}
-          aria-hidden={i >= items.length ? "true" : undefined}
-        >
-          {/* Placeholder hasta que el diseñador entregue los assets */}
-          <figcaption class="type-meta absolute bottom-2.5 left-2.5 rounded-full bg-surface/75 px-2 py-1 text-[0.6rem] text-ink backdrop-blur-sm">
-            {item.label}
-          </figcaption>
-        </figure>
-      ))
+      track.map((t, i) => {
+        const copia = i >= items.length;
+        return (
+          <button
+            type="button"
+            class="marquee-item relative m-0 shrink-0 cursor-pointer overflow-hidden rounded-2xl text-left"
+            style={`aspect-ratio: 16 / 10; height:${height}; background-color:${t.tono};`}
+            data-trabajo={t.slug}
+            aria-hidden={copia ? "true" : undefined}
+            tabindex={copia ? -1 : undefined}
+            aria-label={`Ver ${t.cliente}: ${t.titulo}`}
+          >
+            {/* Placeholder hasta que el diseñador entregue los assets */}
+            <span class="type-meta absolute bottom-2.5 left-2.5 rounded-full bg-surface/75 px-2 py-1 text-[0.6rem] text-ink backdrop-blur-sm">
+              {t.categoria} · {t.cliente}
+            </span>
+          </button>
+        );
+      })
     }
   </div>
 </div>
@@ -58,17 +71,33 @@ const track = [...items, ...items]; // duplicado para el bucle
     animation-play-state: paused;
   }
 
+  /* El congelado con el detalle abierto lo hace TrabajoDetalle por JS, no una
+     regla de aca: una regla scopeada que dependa de un atributo en <body> es
+     fragil (Astro la descarta al combinarla con :global) y ademas acopla este
+     componente a otro. */
+
   /* Hover de imagen medido en readymag: transition filter 100ms ease */
   .marquee-item {
     filter: saturate(1);
-    transition: filter 100ms ease;
-    cursor: pointer;
+    transition:
+      filter 100ms ease,
+      opacity 180ms cubic-bezier(0.16, 1, 0.3, 1);
   }
   .marquee:hover .marquee-item {
     filter: saturate(0.15);
   }
   .marquee .marquee-item:hover {
     filter: saturate(1);
+  }
+  .marquee-item:focus-visible {
+    outline: 2px solid var(--color-ink-strong);
+    outline-offset: 3px;
+  }
+
+  /* El tile de origen se esconde mientras su copia flotante hace el morph */
+  .marquee-item[data-origen] {
+    opacity: 0;
+    transition: none;
   }
 
   @media (prefers-reduced-motion: reduce) {

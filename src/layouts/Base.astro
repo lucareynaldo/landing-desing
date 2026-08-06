@@ -2,6 +2,7 @@
 import "../styles/global.css";
 import SiteFooter from "../components/SiteFooter.astro";
 import SiteHeader from "../components/SiteHeader.astro";
+import TrabajoDetalle from "../components/TrabajoDetalle.astro";
 
 interface Props {
   title: string;
@@ -50,6 +51,12 @@ const {
     </div>
 
     <SiteFooter />
+
+    {/*
+      Fuera de la lamina a proposito: la lamina crea contexto de apilado con
+      su z-index, y el detalle tiene que poder taparlo todo, footer incluido.
+    */}
+    <TrabajoDetalle />
 
     <script>
       import Lenis from "lenis";

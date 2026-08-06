@@ -18,7 +18,10 @@ const LOGOS = [
 ];
 
 const ITEM = 88; // lado de la caja en px
-const GAP = 10;
+// Gap negativo: los items se pisan entre si, como en teamworkgraph. El paso
+// analitico del loop sale de ITEM + GAP, asi que la magnificacion se ajusta
+// sola sin tocar nada mas.
+const GAP = -22;
 const track = [...LOGOS, ...LOGOS]; // duplicado para el bucle
 
 // Rotacion leve por item, como en teamworkgraph: rompe la sensacion de grilla
@@ -47,7 +50,7 @@ const rotacion = (i: number) => (((i * 37) % 25) - 12) * 0.5;
         track.map((nombre, i) => (
           <div
             class="logo-caja grid shrink-0 place-items-center rounded-[22%] bg-white ring-1 ring-ink/10"
-            style={`width:${ITEM}px; height:${ITEM}px; --rot:${rotacion(i).toFixed(1)}deg;`}
+            style={`width:${ITEM}px; height:${ITEM}px; --rot:${rotacion(i).toFixed(1)}deg; z-index:${i};`}
             title={nombre}
             aria-hidden={i >= LOGOS.length ? "true" : undefined}
           >
@@ -173,12 +176,14 @@ const rotacion = (i: number) => (((i * 37) % 25) - 12) * 0.5;
           caja.style.transform = `rotate(var(--rot, 0deg)) scale(${escala})`;
           escalaPrev[i] = escala;
         }
-        // z-index en escalones gruesos. Antes se reescribia cada frame con
-        // Math.round(escala * 100), lo que recreaba el contexto de apilado
-        // sin parar y forzaba repintados.
-        const z = escala > 1.01 ? Math.round(escala * 10) : 0;
+        // Con los items solapados el apilado importa: en reposo cada uno pisa
+        // al anterior (z = indice, puesto en el HTML), y el magnificado tiene
+        // que quedar por encima de todos. Escalones gruesos y escritura solo
+        // al cambiar de escalon, para no recrear el contexto de apilado en
+        // cada frame.
+        const z = escala > 1.01 ? 200 + Math.round(escala * 10) : 0;
         if (z !== zPrev[i]) {
-          caja.style.zIndex = z ? String(z) : "";
+          caja.style.zIndex = z ? String(z) : String(i);
           zPrev[i] = z;
         }
       }

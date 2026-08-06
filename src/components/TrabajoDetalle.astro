@@ -205,9 +205,31 @@ const DATOS = TRABAJOS.map((t) => ({
 
     const porSlug = (s) => DATOS.findIndex((d) => d.slug === s);
 
-    /** Tile visible del carrusel para un slug (la copia del bucle no cuenta). */
-    const buscarTile = (slug) =>
-      document.querySelector(`.marquee-item[data-trabajo="${slug}"]:not([aria-hidden="true"])`);
+    /**
+     * Tile de ese slug que MAS se ve en pantalla.
+     *
+     * El marquee duplica la pista para cerrar el bucle, asi que de cada
+     * trabajo hay dos tiles en el DOM. La segunda copia lleva aria-hidden
+     * para que un lector de pantalla no anuncie todo dos veces, pero
+     * visualmente es un tile igual de real: durante media vuelta es la unica
+     * que se ve. Elegir por aria-hidden en vez de por visibilidad hacia que
+     * el morph arrancara desde un tile fuera de pantalla.
+     */
+    const buscarTile = (slug) => {
+      const todos = Array.from(document.querySelectorAll(`.marquee-item[data-trabajo="${slug}"]`));
+      if (!todos.length) return null;
+      let mejor = todos[0];
+      let mejorVisible = -1;
+      for (const el of todos) {
+        const r = el.getBoundingClientRect();
+        const visible = Math.max(0, Math.min(r.right, innerWidth) - Math.max(r.left, 0));
+        if (visible > mejorVisible) {
+          mejorVisible = visible;
+          mejor = el;
+        }
+      }
+      return mejor;
+    };
 
     /** Caja destino: se encaja una proporcion 16/10 dentro del area disponible. */
     const cajaDestino = () => {
@@ -398,7 +420,10 @@ const DATOS = TRABAJOS.map((t) => ({
     // --- disparadores ---
     document.addEventListener("click", (e) => {
       const tile = e.target.closest?.(".marquee-item[data-trabajo]");
-      if (!tile || tile.getAttribute("aria-hidden") === "true") return;
+      if (!tile) return;
+      // Se abre con CUALQUIER copia, incluida la duplicada del bucle: es la
+      // que el usuario esta viendo. Y el morph arranca desde la que clickeo,
+      // no desde su gemela, que puede estar fuera de pantalla.
       const i = porSlug(tile.dataset.trabajo);
       if (i >= 0) abrir(i, tile);
     });

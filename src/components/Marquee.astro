@@ -102,6 +102,18 @@ const track = [...items, ...items];
     outline-offset: 3px;
   }
 
+  /* La foto crece apenas dentro del tile, que no se mueve. Duracion mas larga
+     que el desaturado (100ms) a proposito: el color reacciona al instante y
+     el zoom queda por detras, que es lo que lo hace sentir suave y no brusco. */
+  .marquee-item img {
+    transform: scale(1);
+    transition: transform 500ms var(--ease-out);
+  }
+  .marquee-item:hover img,
+  .marquee-item:focus-visible img {
+    transform: scale(1.07);
+  }
+
   /* El tile de origen se esconde mientras su copia flotante hace el morph */
   .marquee-item[data-origen] {
     opacity: 0;

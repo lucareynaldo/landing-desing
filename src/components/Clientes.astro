@@ -18,9 +18,15 @@ const LOGOS = [
 ];
 
 const ITEM = 88; // lado de la caja en px
-// Gap negativo: los items se pisan entre si, como en teamworkgraph. El paso
-// analitico del loop sale de ITEM + GAP, asi que la magnificacion se ajusta
-// sola sin tocar nada mas.
+// Separacion negativa: los items se pisan entre si, como en teamworkgraph.
+//
+// OJO: esto NO puede hacerse con `gap`. La propiedad gap rechaza valores
+// negativos y descarta la declaracion entera, con lo que el paso real queda
+// en ITEM y el loop —que calcula posiciones con ITEM + GAP— se desfasa 22px
+// por item. A los ocho items eso son 176px de error y la magnificacion
+// aparece corrida respecto del cursor. Va con margin negativo, que si es
+// valido, aplicado a todos menos al primero para que el bucle siga cerrando
+// en N * PASO.
 const GAP = -22;
 const track = [...LOGOS, ...LOGOS]; // duplicado para el bucle
 
@@ -45,7 +51,7 @@ const rotacion = (i: number) => (((i * 37) % 25) - 12) * 0.5;
     data-gap={GAP}
     data-cantidad={LOGOS.length}
   >
-    <div class="logos-track flex w-max items-center" data-track style={`gap:${GAP}px`}>
+    <div class="logos-track flex w-max items-center" data-track style={`--gap:${GAP}px`}>
       {
         track.map((nombre, i) => (
           <div
@@ -78,6 +84,13 @@ const rotacion = (i: number) => (((i * 37) % 25) - 12) * 0.5;
   }
   .logos-track {
     will-change: transform;
+  }
+
+  /* El solapado. Al primero no se le aplica, asi la posicion del item k queda
+     en k * (ITEM + GAP) y el bucle sigue cerrando exacto en N * PASO, que es
+     lo que asume el loop. */
+  .logo-caja + .logo-caja {
+    margin-left: var(--gap, 0px);
   }
   .logo-caja {
     transform-origin: 50% 50%;

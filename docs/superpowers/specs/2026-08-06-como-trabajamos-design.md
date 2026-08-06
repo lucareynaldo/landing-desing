@@ -3,7 +3,7 @@
 Fecha: 2026-08-06
 
 Sección nueva al final de la home, después de `Clientes`: el proceso del estudio
-como un camino serpenteado de diez etapas que se dibuja con el scroll.
+como un camino serpenteado de diez etapas que se dibuja solo al llegar a ella.
 
 ## Qué se muestra
 
@@ -97,7 +97,7 @@ Un tramo de línea. Props: `indice`, `direccion` (`derecha` | `izquierda` |
 ### `src/components/ComoTrabajamos.astro`
 
 La sección: header, grid, intercalado de nodos y vértices, bloque de contacto y
-el script del scrub. Es el único que conoce la forma del camino.
+el script que lleva el recorrido. Es el único que conoce la forma del camino.
 
 ### `src/pages/index.astro`
 
@@ -107,29 +107,30 @@ Se monta después de `<Clientes />`.
 
 ### El único trabajo del JS
 
-Escribir `--p` (0 a 1) en la sección según su posición en el viewport. Handler
-de scroll rateado a un frame con `requestAnimationFrame` e `IntersectionObserver`
-para no calcular cuando la sección no se ve. Es el mecanismo que ya corre en
-`PainPoint.astro`; se sigue ese patrón en lugar de inventar uno nuevo.
+Escribir `--p` (0 a 1) en el grid. Un `IntersectionObserver` sobre el **gráfico**
+dispara el recorrido cuando entra en pantalla, y de ahí en más lo lleva el
+tiempo: un `requestAnimationFrame` que recorre `--p` de 0 a 1 en 2800ms — veinte
+eslabones a ~140ms cada uno.
 
-Se mide el **gráfico**, no la sección:
+Dispara una sola vez y el observer se desconecta. Volver a mirar la sección no
+rebobina el camino: rearmarlo cada vez que entra en pantalla lo convierte en un
+cartel parpadeante, y lo que cuenta es el proceso, no el efecto.
 
-```
-inicio = vh * 0.7            // top del grafico cuando p = 0
-fin    = vh * 0.6 - altura   // top del grafico cuando p = 1
-p      = (inicio - r.top) / (inicio - fin)
-```
+Se observa el gráfico y no la sección porque el borde superior de la sección
+está unos 250px arriba por el header y el padding. Threshold de 0.2: alcanza con
+que se vea la primera fila. Con 0.5 en móvil no dispararía nunca sin scrollear
+medio gráfico, porque ahí la columna es mucho más alta que la pantalla.
 
-acotado a [0, 1]. Arranca con el borde superior del gráfico al 70% de la
-pantalla — ahí ya se ve la primera fila, así que el primer nodo aparece a la
-vista — y termina con el borde inferior al 60%, con el gráfico entero visible y
-con aire.
-
-> Revisión posterior a la primera implementación. La versión original medía la
-> **sección**, cuyo borde superior está unos 250px arriba del gráfico por el
-> header y el padding. El camino se dibujaba con el gráfico todavía abajo del
-> pliegue, y cuando aparecía en pantalla ya iba por el noveno nodo. La referencia
-> tiene que ser lo que el visitante mira, no el contenedor que lo envuelve.
+> Revisión posterior a la primera implementación. El diseño original ataba `--p`
+> a la posición del scroll. Se probó y falla por una razón que no se ve en el
+> papel: **si el visitante deja de scrollear, el gráfico queda a medio dibujar**,
+> y un proceso cortado por la mitad no se lee como una animación en curso, se lee
+> como algo roto. Un recorrido tiene que terminar. Atarlo al scroll delega su
+> final en una decisión del visitante que no tiene por qué tomar.
+>
+> Se pierde la propiedad de que el scroll sea el avance del proyecto, que era el
+> argumento a favor del scrub. Se gana que la sección siempre se termine de
+> contar.
 
 ### Todo lo demás lo hace el CSS
 
@@ -166,9 +167,9 @@ tramo que sale de un nodo lleva el mismo, así el color se arrastra detrás del
 frente y la etapa siguiente entra con uno nuevo.
 
 El color no se acumula: **viaja**. Cada elemento se apaga a `--color-ink-strong`
-tres eslabones después de llegar, vía `--estela`. Sin eso, al final del scroll
-habría diez colores prendidos a la vez y la sección se comería al resto de la
-página. Es el mismo criterio que el rotador de "Qué hacemos", que también cicla
+tres eslabones después de llegar, vía `--estela`. Sin eso, al terminar el
+recorrido habría diez colores prendidos a la vez y la sección se comería al
+resto de la página. Es el mismo criterio que el rotador de "Qué hacemos", que también cicla
 colores de a uno.
 
 Los diez van de frío a cálido — el recorrido sube de temperatura hacia la
@@ -253,14 +254,15 @@ reciente que eso (`overflow-clip-margin`, `color-mix`).
 
 Los vértices van con `aria-hidden` para no ensuciar la cuenta.
 
-Con `prefers-reduced-motion: reduce` no se registra el listener de scroll: `--p`
-queda en 1 por CSS y la sección se ve terminada desde el principio.
+Con `prefers-reduced-motion: reduce` el script no corre: no se registra el
+observer ni se anima nada. `--p` queda en 1 por CSS y la sección se ve terminada
+desde el principio.
 
 ## Decisiones tomadas a propósito
 
-**Sin sonido.** Diez sonidos disparándose durante un scroll sería ruido, y el
-audio del sitio responde solo a acciones deliberadas — un click, un agarre —
-nunca al scroll.
+**Sin sonido.** Diez sonidos en los 2800ms del recorrido sería ruido, y el audio
+del sitio responde solo a acciones deliberadas — un click, un agarre — nunca a
+algo que pasa solo por haber llegado a mirar.
 
 **Sin SVG y sin medir el DOM.** Se evaluaron dos alternativas: grid + SVG
 superpuesto con la geometría medida del DOM (permite curvas, pero exige medir al
@@ -285,13 +287,14 @@ Propuesta, para reescribir:
 
 1. Las diez etapas se leen en orden con el trazado de 3-3-3-1 en pantallas `md` y
    más grandes, y en una sola columna debajo de eso.
-2. El camino se dibuja y se desdibuja siguiendo la posición del scroll, no como
-   trigger de una sola vez.
+2. El camino arranca al entrar el gráfico en pantalla y **termina solo**, sin
+   depender de que el visitante siga scrolleando. Se verifica llegando a la
+   sección y quedándose quieto: el recorrido tiene que completarse igual.
 3. En cualquier punto del recorrido, ningún nodo está encendido si el vértice
-   que lo alimenta no terminó de dibujarse. Se verifica parando el scroll en
-   varios puntos y mirando el frente del trazo.
-4. Con `prefers-reduced-motion` la sección se ve completa y no se registra
-   ningún listener de scroll.
+   que lo alimenta no terminó de dibujarse. Se verifica subiendo `DURACION` a
+   unos 15000ms y mirando el frente del trazo avanzar.
+4. Con `prefers-reduced-motion` la sección se ve completa desde el principio y
+   no se registra el observer ni corre ninguna animación.
 5. Un lector de pantalla anuncia una lista de diez elementos, sin los vértices.
 6. `#contacto` resuelve: los botones "Hablemos" del header y del hero llegan al
    bloque nuevo.

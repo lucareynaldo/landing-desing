@@ -246,50 +246,41 @@ const CADENA: EnCadena[] = PROCESO.flatMap((etapa, i) => {
     const grid = seccion.querySelector<HTMLElement>(".proceso-grid");
 
     if (grid) {
-      let pendiente = false;
-      let visible = false;
+      // 20 eslabones a ~140ms cada uno. Es el tiempo que tarda el recorrido
+      // completo, no el de cada paso: la cadena se reparte sola porque cada
+      // elemento saca su tramo de --p.
+      const DURACION = 2800;
 
-      const pintar = () => {
-        pendiente = false;
-        // Se mide el GRAFICO, no la seccion. Midiendo la seccion el recorrido
-        // arrancaba en su borde superior, que esta ~250px arriba del grafico
-        // por el header y el padding: el camino se dibujaba con el grafico
-        // todavia abajo del pliegue y cuando aparecia en pantalla ya iba por
-        // el noveno nodo.
-        const r = grid.getBoundingClientRect();
-        const vh = window.innerHeight;
+      let arrancado = false;
+      let t0 = 0;
 
-        // Arranca con el borde de arriba del grafico al 70% de la pantalla:
-        // ahi ya se ve la primera fila, asi que el primer nodo aparece a la
-        // vista y no antes.
-        const inicio = vh * 0.7;
-        // Termina con el borde de abajo al 60%: el grafico entero a la vista y
-        // con aire, no apenas entrando.
-        const fin = vh * 0.6 - r.height;
-
-        const bruto = (inicio - r.top) / Math.max(1, inicio - fin);
-        grid.style.setProperty("--p", String(Math.min(1, Math.max(0, bruto))));
+      const frame = (t: number) => {
+        if (!t0) t0 = t;
+        const p = Math.min(1, (t - t0) / DURACION);
+        grid.style.setProperty("--p", String(p));
+        if (p < 1) requestAnimationFrame(frame);
       };
 
-      const alScrollear = () => {
-        if (!pendiente && visible) {
-          pendiente = true;
-          requestAnimationFrame(pintar);
-        }
-      };
-
+      // Se observa el GRAFICO, no la seccion: el borde superior de la seccion
+      // esta ~250px arriba por el header y el padding, asi que disparar con
+      // ella arrancaria el recorrido con el grafico todavia abajo del pliegue.
+      //
+      // Threshold 0.2: alcanza con que se vea la primera fila. Poner 0.5 en
+      // movil no dispararia nunca sin scrollear medio grafico, porque ahi la
+      // columna es mucho mas alta que la pantalla.
       const io = new IntersectionObserver(
         (entradas) => {
-          visible = entradas[0].isIntersecting;
-          if (visible) alScrollear();
+          if (arrancado || !entradas[0].isIntersecting) return;
+          arrancado = true;
+          // Una sola vez. Volver a mirar la seccion no rebobina el camino:
+          // rearmarlo cada vez que entra en pantalla lo convierte en un cartel
+          // parpadeante, y lo que cuenta es el proceso, no el efecto.
+          io.disconnect();
+          requestAnimationFrame(frame);
         },
-        { rootMargin: "10% 0px" },
+        { threshold: 0.2 },
       );
-      io.observe(seccion);
-
-      window.addEventListener("scroll", alScrollear, { passive: true });
-      window.addEventListener("resize", alScrollear, { passive: true });
-      pintar();
+      io.observe(grid);
     }
   }
 </script>

@@ -131,9 +131,8 @@ const CADENA: EnCadena[] = PROCESO.flatMap((etapa, i) => {
 
 <style>
   .proceso-grid {
-    /* Provisorio: pasa a 0 y lo maneja el scroll cuando entre el script.
-       Clavado en 1 para poder revisar el dibujo terminado. */
-    --p: 1;
+    /* Lo escribe el script segun la posicion de la seccion en el viewport. */
+    --p: 0;
     --n-cadena: 20;
 
     display: grid;
@@ -184,4 +183,64 @@ const CADENA: EnCadena[] = PROCESO.flatMap((etapa, i) => {
       align-self: center;
     }
   }
+
+  /* Sin animacion, la seccion se ve terminada. El script ni siquiera se
+     registra, asi que no hay --p inline que le gane a esta regla. */
+  @media (prefers-reduced-motion: reduce) {
+    .proceso-grid {
+      --p: 1;
+    }
+  }
 </style>
+
+<script>
+  // Scrub del camino segun la posicion de la seccion en el viewport.
+  //
+  // El script hace UNA sola cosa: escribir --p. Todo el dibujo lo resuelve el
+  // CSS, donde cada elemento calcula su propio tramo a partir de su --i. Por
+  // eso no hay nada que medir ni que rehacer en un resize, que es lo que se
+  // gano al armar el trazado sin codos.
+  //
+  // Mismo mecanismo que PainPoint.astro: el handler de scroll solo marca sucio
+  // y el trabajo va en el frame.
+  const seccion = document.querySelector<HTMLElement>("[data-proceso]");
+
+  if (seccion && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    const grid = seccion.querySelector<HTMLElement>(".proceso-grid");
+
+    if (grid) {
+      let pendiente = false;
+      let visible = false;
+
+      const pintar = () => {
+        pendiente = false;
+        const r = seccion.getBoundingClientRect();
+        // 0 cuando el borde superior cruza el 80% de la pantalla; 1 con la
+        // seccion casi entera a la vista. El 0.75 deja que el camino termine
+        // de dibujarse antes de que la seccion empiece a irse por arriba.
+        const bruto = (window.innerHeight * 0.8 - r.top) / (r.height * 0.75);
+        grid.style.setProperty("--p", String(Math.min(1, Math.max(0, bruto))));
+      };
+
+      const alScrollear = () => {
+        if (!pendiente && visible) {
+          pendiente = true;
+          requestAnimationFrame(pintar);
+        }
+      };
+
+      const io = new IntersectionObserver(
+        (entradas) => {
+          visible = entradas[0].isIntersecting;
+          if (visible) alScrollear();
+        },
+        { rootMargin: "10% 0px" },
+      );
+      io.observe(seccion);
+
+      window.addEventListener("scroll", alScrollear, { passive: true });
+      window.addEventListener("resize", alScrollear, { passive: true });
+      pintar();
+    }
+  }
+</script>

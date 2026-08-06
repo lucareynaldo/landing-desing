@@ -1,0 +1,187 @@
+---
+import { PROCESO, type Etapa } from "../data/proceso";
+import { EMAIL } from "../data/estudio";
+import ProcesoNodo from "./ProcesoNodo.astro";
+import ProcesoVertice, { type Direccion } from "./ProcesoVertice.astro";
+
+// El proceso como camino serpenteado. Cuatro filas: 3, 3, 3 y 1.
+//
+// La forma no es decorativa, decide la implementacion entera: CADA BAJADA
+// ARRANCA DEBAJO DEL ULTIMO NODO DE SU FILA, asi que ningun giro ocurre en el
+// aire y los tres tramos verticales entran y salen de un nodo. Sin esa
+// propiedad habria codos que dibujar, y un codo obliga a un SVG con geometria
+// medida del DOM. Con ella alcanzan diez cajas y nueve rectas en un grid.
+//
+//   col:   1     3     5
+//   r1:  [01]--[02]--[03]
+//   r2                  |
+//   r3:  [06]--[05]--[04]
+//   r4    |
+//   r5:  [07]--[08]--[09]
+//   r6                  |
+//   r7:  [ contacto ][10]
+//
+// El grid es de 5 columnas x 7 filas: impares para los nodos, pares para el
+// aire donde viven los vertices.
+
+interface Celda {
+  col: number;
+  fila: number;
+}
+
+const NODOS: Celda[] = [
+  { col: 1, fila: 1 }, { col: 3, fila: 1 }, { col: 5, fila: 1 }, // 01 02 03
+  { col: 5, fila: 3 }, { col: 3, fila: 3 }, { col: 1, fila: 3 }, // 04 05 06
+  { col: 1, fila: 5 }, { col: 3, fila: 5 }, { col: 5, fila: 5 }, // 07 08 09
+  { col: 5, fila: 7 },                                           // 10
+];
+
+const VERTICES: (Celda & { direccion: Direccion })[] = [
+  { col: 2, fila: 1, direccion: "derecha" },
+  { col: 4, fila: 1, direccion: "derecha" },
+  { col: 5, fila: 2, direccion: "abajo" },
+  { col: 4, fila: 3, direccion: "izquierda" },
+  { col: 2, fila: 3, direccion: "izquierda" },
+  { col: 1, fila: 4, direccion: "abajo" },
+  { col: 2, fila: 5, direccion: "derecha" },
+  { col: 4, fila: 5, direccion: "derecha" },
+  { col: 5, fila: 6, direccion: "abajo" },
+];
+
+type EnCadena =
+  | { tipo: "nodo"; etapa: Etapa; indice: number; col: number; fila: number }
+  | { tipo: "vertice"; direccion: Direccion; indice: number; col: number; fila: number };
+
+// El orden de este array ES el orden del DOM, el de la animacion y, en movil,
+// el de lectura. Por eso se arma una sola vez y no se deriva en dos lados.
+// Nodo i -> indice 2i, vertice i -> indice 2i+1, contacto -> 19.
+const CADENA: EnCadena[] = PROCESO.flatMap((etapa, i) => {
+  const nodo: EnCadena = { tipo: "nodo", etapa, indice: i * 2, ...NODOS[i] };
+  // El ultimo nodo no tiene tramo de salida: son 10 nodos y 9 vertices.
+  if (i >= VERTICES.length) return [nodo];
+  const vertice: EnCadena = { tipo: "vertice", indice: i * 2 + 1, ...VERTICES[i] };
+  return [nodo, vertice];
+});
+---
+
+<section
+  id="como-trabajamos"
+  class="mx-auto w-full max-w-[1400px] px-6 pb-24 pt-24 md:px-10 md:pb-32 md:pt-32"
+  data-proceso
+>
+  <header class="mb-14 md:mb-20">
+    <p class="type-meta text-ink-muted">Cómo trabajamos</p>
+    <h2 class="type-display mt-4 max-w-[20ch] text-[clamp(1.75rem,4vw,3.25rem)] text-ink-strong">
+      Diez pasos. Ninguna sorpresa en el medio.
+    </h2>
+  </header>
+
+  <div class="proceso-grid">
+    {/*
+      display:contents en la lista: el <ol> no genera caja propia, asi que sus
+      <li> se vuelven celdas del grid de afuera y la lista conserva su
+      semantica. Hace falta porque el bloque de contacto es una celda mas del
+      mismo grid pero NO es un paso del proceso: adentro del <ol> un lector de
+      pantalla anunciaria once.
+    */}
+    <ol class="proceso-lista">
+      {
+        CADENA.map((c) =>
+          c.tipo === "nodo" ? (
+            <ProcesoNodo
+              n={c.etapa.n}
+              nombre={c.etapa.nombre}
+              indice={c.indice}
+              col={c.col}
+              fila={c.fila}
+            />
+          ) : (
+            <ProcesoVertice
+              indice={c.indice}
+              direccion={c.direccion}
+              col={c.col}
+              fila={c.fila}
+            />
+          ),
+        )
+      }
+    </ol>
+
+    {/*
+      Ultimo eslabon de la cadena: se enciende recien despues de que la linea
+      llego a "Entrega final". El camino te lleva hasta aca y recien entonces
+      aparece la invitacion.
+
+      Lleva id="contacto" porque los "Hablemos" del header y del hero apuntaban
+      a un ancla que no existia en ninguna pagina.
+    */}
+    <div id="contacto" class="proceso-celda proceso-contacto" style="--i:19;">
+      <p class="type-display text-[clamp(1.25rem,2vw,1.75rem)] text-ink-strong">
+        ¿Empezamos por el 01?
+      </p>
+      <a
+        href={`mailto:${EMAIL}`}
+        class="type-body mt-2 inline-block text-lg text-ink-soft underline decoration-ink-muted underline-offset-4 transition-colors duration-(--duration-base) ease-(--ease-inout) hover:text-ink-strong hover:decoration-ink-strong"
+      >
+        {EMAIL}
+      </a>
+    </div>
+  </div>
+</section>
+
+<style>
+  .proceso-grid {
+    /* Provisorio: pasa a 0 y lo maneja el scroll cuando entre el script.
+       Clavado en 1 para poder revisar el dibujo terminado. */
+    --p: 1;
+    --n-cadena: 20;
+
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .proceso-lista {
+    /* No genera caja: sus hijos son celdas del grid de arriba. */
+    display: contents;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  /* El tramo que le toca a cada elemento de la cadena. Vive en :global porque
+     los nodos y los vertices son otros componentes y quedan fuera del scope de
+     este archivo. */
+  :global(.proceso-celda) {
+    --local: clamp(0, calc(var(--p, 0) * var(--n-cadena) - var(--i)), 1);
+  }
+
+  .proceso-contacto {
+    margin-top: 1.5rem;
+  }
+
+  @media (min-width: 768px) {
+    .proceso-grid {
+      grid-template-columns:
+        minmax(0, 1fr) 2.5rem minmax(0, 1fr) 2.5rem minmax(0, 1fr);
+      grid-template-rows: auto 2.5rem auto 2.5rem auto 2.5rem auto;
+    }
+
+    /* La colocacion va por variables inline y se aplica SOLO aca. Debajo de md
+       la regla no existe y los 20 elementos caen en una columna por orden del
+       DOM: mismos elementos, mismos indices, mismo script, sin un segundo
+       dibujo que mantener sincronizado. */
+    :global(.proceso-nodo),
+    :global(.proceso-vertice) {
+      grid-column: var(--col);
+      grid-row: var(--fila);
+    }
+
+    .proceso-contacto {
+      grid-column: 1 / span 3;
+      grid-row: 7;
+      margin-top: 0;
+      align-self: center;
+    }
+  }
+</style>

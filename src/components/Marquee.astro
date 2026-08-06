@@ -69,6 +69,24 @@ const track = [...items, ...items];
     }
   }
 
+  /* La fila necesita overflow hidden para recortar la pista horizontalmente,
+     pero eso tambien recortaba la card al escalar en el hover.
+     `overflow-x: hidden` + `overflow-y: visible` no sirve: la spec convierte
+     el visible en auto y sigue recortando, ademas de meter scrollbar.
+     La salida es agrandar la caja de recorte con padding vertical (el
+     overflow recorta en el borde del padding box, no del content box) y
+     devolver ese alto con margen negativo, para que el layout no se corra
+     ni un pixel. */
+  .marquee {
+    padding-block: 16px;
+    margin-block: -16px;
+  }
+  /* Al crecer, la card invade la franja de la fila vecina: la fila con hover
+     tiene que pintarse por encima. */
+  .marquee:hover {
+    z-index: 3;
+  }
+
   .marquee-track {
     animation: marquee-scroll var(--marquee-duration) linear infinite;
     animation-direction: var(--marquee-direction);

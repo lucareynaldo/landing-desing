@@ -40,6 +40,11 @@ const { indice, direccion, tono, col, fila } = Astro.props;
     min-height: 2rem;
     list-style: none;
 
+    /* Explicito, aunque sea el valor por defecto: el par con el z-index del
+       nodo es lo que mantiene los tramos por detras de las cajas, y separados
+       en dos archivos conviene que se vea de los dos lados. */
+    z-index: 0;
+
     /* Color del nodo del que sale, apagandose a tinta con la estela. Lo
        comparten la linea y la flecha. */
     --trazo: color-mix(

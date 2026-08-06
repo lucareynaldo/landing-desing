@@ -35,6 +35,14 @@ const { n, nombre, tono, indice, col, fila } = Astro.props;
     border-radius: 0.75rem;
     list-style: none;
 
+    /* Arriba de los vertices. Sin esto los tramos se pintan ENCIMA de las
+       cajas: tienen position:relative para poder ubicar adentro la linea y la
+       flecha, y un elemento posicionado se pinta despues de uno que no lo
+       esta. Se notaba al escalar en hover, con la linea cruzando el borde.
+       No hace falta agregarle position al nodo: los items de un grid aceptan
+       z-index aunque sean estaticos. */
+    z-index: 1;
+
     /* El nodo APARECE, no se tiñe. Antes las diez cajas estaban desde el
        principio en gris claro y lo unico que viajaba era el color: con las
        diez a la vista no se leia un recorrido, se leia una grilla que cambiaba

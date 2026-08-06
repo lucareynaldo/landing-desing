@@ -197,6 +197,13 @@ justamente lo que corresponde ahí.
 Va detrás de `@media (hover: hover)`: en táctil el hover se queda pegado después
 de tocar.
 
+**Orden de pintado.** Los nodos van con `z-index: 1` y los vértices con
+`z-index: 0`. Hace falta declararlo: el vértice tiene `position: relative` para
+ubicar adentro la línea y la flecha, y un elemento posicionado se pinta después
+de uno que no lo está — o sea que por defecto los tramos quedan **encima** de las
+cajas, y se nota apenas un nodo escala en hover. No hace falta agregarle
+`position` al nodo: los ítems de un grid aceptan `z-index` aunque sean estáticos.
+
 **Vértices.** Línea de 1px y una punta de flecha en el extremo de llegada, que
 es siempre el opuesto al `transform-origin` de la línea. La punta es un cuadrado
 de 5px con dos bordes, girado: el vértice donde se cruzan es el que apunta.

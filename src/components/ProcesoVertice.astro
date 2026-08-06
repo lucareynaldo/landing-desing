@@ -1,0 +1,75 @@
+---
+// Un tramo de linea entre dos nodos.
+//
+// La linea es un ::before y no el <li> mismo, para poder centrarla en la celda
+// sin tocar la caja que ocupa en el grid.
+//
+// La direccion decide el eje del scale y, sobre todo, el transform-origin: el
+// tramo tiene que crecer desde el lado por el que ENTRA la linea. Los de la
+// fila del medio, que va de derecha a izquierda, crecen desde la derecha; con
+// un origin fijo se dibujarian hacia atras justo en esa fila.
+
+export type Direccion = "derecha" | "izquierda" | "abajo";
+
+interface Props {
+  /** Posicion en la cadena de 20 elementos. */
+  indice: number;
+  direccion: Direccion;
+  /** Celda del grid en desktop. En movil no se usa. */
+  col: number;
+  fila: number;
+}
+
+const { indice, direccion, col, fila } = Astro.props;
+---
+
+<li
+  class="proceso-celda proceso-vertice"
+  data-direccion={direccion}
+  style={`--i:${indice}; --col:${col}; --fila:${fila};`}
+  aria-hidden="true"
+>
+</li>
+
+<style>
+  .proceso-vertice {
+    position: relative;
+    min-height: 2rem;
+    list-style: none;
+  }
+
+  /* Base = movil: en una sola columna TODOS los tramos son verticales,
+     incluidos los que en desktop van de costado. */
+  .proceso-vertice::before {
+    content: "";
+    position: absolute;
+    background: var(--color-ink-strong);
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    width: 1px;
+    scale: 1 var(--local, 0);
+    transform-origin: center top;
+  }
+
+  @media (min-width: 768px) {
+    .proceso-vertice[data-direccion="derecha"]::before,
+    .proceso-vertice[data-direccion="izquierda"]::before {
+      top: 50%;
+      bottom: auto;
+      left: 0;
+      right: 0;
+      width: auto;
+      height: 1px;
+      scale: var(--local, 0) 1;
+    }
+
+    .proceso-vertice[data-direccion="derecha"]::before {
+      transform-origin: left center;
+    }
+
+    .proceso-vertice[data-direccion="izquierda"]::before {
+      transform-origin: right center;
+    }
+  }
+</style>

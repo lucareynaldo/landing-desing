@@ -140,7 +140,7 @@ const DATOS = TRABAJOS.map((t) => ({
       CSS y el JS solo lee su caja. Asi el layout responsive se define aca y
       no queda hardcodeado en el script.
     */}
-    <div class="relative hidden flex-1 p-8 md:block lg:p-12">
+    <div data-area class="relative hidden flex-1 p-8 md:block lg:p-12">
       <div data-destino class="size-full"></div>
     </div>
   </div>
@@ -162,6 +162,7 @@ const DATOS = TRABAJOS.map((t) => ({
     const fondo = raiz.querySelector("[data-fondo]");
     const panel = raiz.querySelector("[data-panel]");
     const destino = raiz.querySelector("[data-destino]");
+    const area = raiz.querySelector("[data-area]");
     const media = raiz.querySelector("[data-media]");
     const contenido = raiz.querySelector("[data-contenido]");
 
@@ -434,6 +435,21 @@ const DATOS = TRABAJOS.map((t) => ({
     raiz.querySelector("[data-anterior]").addEventListener("click", () => saltar(-1));
     raiz.querySelector("[data-siguiente]").addEventListener("click", () => saltar(1));
     fondo.addEventListener("click", () => cerrar());
+
+    // Click en el vacio alrededor de la imagen -> cerrar.
+    //
+    // No alcanza con el listener del fondo: el flex de arriba lo tapa entero,
+    // asi que a [data-fondo] no le llega un solo click. El area del media es
+    // la que los recibe, y como el elemento que morphea es fixed y
+    // pointer-events:none, los clicks SOBRE la imagen tambien caen aca. Por eso
+    // no se puede distinguir por target y se compara contra su caja: adentro
+    // de la imagen no pasa nada, afuera cierra.
+    area?.addEventListener("click", (e) => {
+      const r = media.getBoundingClientRect();
+      const dentro =
+        e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+      if (!dentro) cerrar();
+    });
 
     document.addEventListener("keydown", (e) => {
       if (!abierto) return;

@@ -60,18 +60,40 @@ function oscurecer(hex: string, factor: number): string {
   return "#" + m.map((v) => v.toString(16).padStart(2, "0")).join("");
 }
 
+/** Aclara mezclando con blanco. */
+function aclarar(hex: string, factor: number): string {
+  const n = parseInt(hex.slice(1), 16);
+  const m = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) =>
+    Math.round(v + (255 - v) * factor),
+  );
+  return "#" + m.map((v) => v.toString(16).padStart(2, "0")).join("");
+}
+
 // Algunas marcas son muy claras (Sketch, GIMP). Sobre esas, el blanco no
 // contrasta, asi que se oscurece el fondo lo justo para que el glifo se lea.
 let fondo: string | undefined;
+let fondoOscuro: string | undefined;
+
 if (logo.tipo === "glifo") {
   const L = luminancia(logo.hex);
   fondo = L > 0.5 ? oscurecer(logo.hex, 0.42) : L > 0.3 ? oscurecer(logo.hex, 0.2) : logo.hex;
+
+  // El problema espejado, que solo aparece en modo oscuro: una marca casi
+  // negra deja de tener caja contra una pagina negra y el glifo blanco queda
+  // flotando solo. Penpot, Inkscape y CorelDRAW son literalmente #000000.
+  //
+  // El aclarado es proporcional y no por umbral: asi no hay un escalon entre
+  // la marca que se toca y la que se deja igual. Se apaga solo al llegar a
+  // luminancia 0.06, que es donde la caja ya se distingue del fondo.
+  const Lf = luminancia(fondo);
+  const empuje = Math.max(0, (0.06 - Lf) / 0.06) * 0.18;
+  fondoOscuro = empuje > 0 ? aclarar(fondo, empuje) : fondo;
 }
 ---
 
 <span
   class:list={["stack-logo grid shrink-0 place-items-center overflow-hidden rounded-[26%]", clase]}
-  style={`width:${lado}px; height:${lado}px;${fondo ? ` background-color:${fondo};` : ""}${style ? " " + style : ""}`}
+  style={`width:${lado}px; height:${lado}px;${fondo ? ` --fondo:${fondo}; --fondo-oscuro:${fondoOscuro};` : ""}${style ? " " + style : ""}`}
   title={logo.nombre}
 >
   {
@@ -100,7 +122,16 @@ if (logo.tipo === "glifo") {
 </span>
 
 <style>
+  /* El fondo va por variable y no en el atributo style, que es la unica forma
+     de que la regla de abajo pueda pisarlo: un estilo inline le gana a
+     cualquier hoja de estilos. Los logos de tipo archivo no definen --fondo y
+     quedan transparentes, que es lo correcto porque su imagen llena la caja. */
   .stack-logo {
     box-shadow: 0 4px 14px rgb(0 0 0 / 0.1);
+    background-color: var(--fondo, transparent);
+  }
+
+  :global([data-tema="oscuro"]) .stack-logo {
+    background-color: var(--fondo-oscuro, var(--fondo, transparent));
   }
 </style>

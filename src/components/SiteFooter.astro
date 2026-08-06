@@ -175,16 +175,22 @@ const UPDATED = "Agosto 2026";
        las manchas solas quedaba una franja muerta en el medio, entre donde
        dejaban de alcanzar las de arriba y donde empezaban las de abajo. El
        gris llena el hueco y las manchas lo tiñen encima. */
-    background-color: hsla(222, 6%, 55%, 0.65);
+    background-color: hsla(222, 6%, 55%, 0.5);
 
     /* Las manchas de color, en los acentos de la marca. Los radios son
        generosos a proposito: con 40% de alto las de arriba y las de abajo no
-       se tocaban. */
+       se tocaban.
+
+       Cada mancha MANTIENE su color hasta el 30% antes de empezar a caer. Sin
+       esa meseta el color estaba a full solo en el punto central y todo lo
+       demas era una mezcla con el gris de base, que es lo que hacia ver la
+       grilla lavada. Ahora hay superficie de color de verdad y el gris queda
+       para los bordes. */
     background-image:
-      radial-gradient(55% 50% at 15% 20%, var(--color-accent) 0%, transparent 70%),
-      radial-gradient(55% 50% at 85% 25%, #0055ff 0%, transparent 70%),
-      radial-gradient(55% 50% at 25% 85%, #12b76a 0%, transparent 70%),
-      radial-gradient(55% 50% at 80% 80%, var(--color-accent-warm) 0%, transparent 70%);
+      radial-gradient(55% 50% at 15% 20%, var(--color-accent) 0%, var(--color-accent) 30%, transparent 82%),
+      radial-gradient(55% 50% at 85% 25%, #0055ff 0%, #0055ff 30%, transparent 82%),
+      radial-gradient(55% 50% at 25% 85%, #12b76a 0%, #12b76a 30%, transparent 82%),
+      radial-gradient(55% 50% at 80% 80%, var(--color-accent-warm) 0%, var(--color-accent-warm) 30%, transparent 82%);
 
     /* Las dos capas de mascara se componen con `add`, que es la union: una
        aporta las verticales y la otra las horizontales. El punteado lo pone

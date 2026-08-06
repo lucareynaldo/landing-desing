@@ -58,10 +58,17 @@ const UPDATED = "Agosto 2026";
       <span class="block text-right">algo serio</span>
     </h2>
 
+    {/*
+      Los botones llevan bg-void, que es el color del propio footer: son
+      outline, o sea sin relleno, y la grilla del fondo se les veia a traves.
+      Con el fondo puesto siguen leyendose como outline -lo que los define es
+      el borde- pero ya no dejan pasar nada. Va con el token del footer y no
+      con un color fijo para que sirva en los dos modos.
+    */}
     <div class="mt-8 flex flex-wrap justify-end gap-3 md:mt-10 md:gap-4">
       <a
         href={`mailto:${EMAIL}`}
-        class="group inline-flex items-center gap-3 rounded-full border border-surface/40 px-6 py-3 text-sm font-bold uppercase tracking-[-0.02em] transition-colors duration-(--duration-base) ease-(--ease-inout) hover:border-surface hover:bg-surface hover:text-void md:px-8 md:py-4 md:text-base"
+        class="group inline-flex items-center gap-3 rounded-full border border-surface/40 bg-void px-6 py-3 text-sm font-bold uppercase tracking-[-0.02em] transition-colors duration-(--duration-base) ease-(--ease-inout) hover:border-surface hover:bg-surface hover:text-void md:px-8 md:py-4 md:text-base"
       >
         Empezar un proyecto
         <span
@@ -71,7 +78,7 @@ const UPDATED = "Agosto 2026";
       </a>
       <a
         href={`mailto:${EMAIL}`}
-        class="inline-flex items-center gap-3 rounded-full border border-surface/40 px-6 py-3 text-sm font-bold uppercase tracking-[-0.02em] transition-colors duration-(--duration-base) ease-(--ease-inout) hover:border-surface hover:bg-surface hover:text-void md:px-8 md:py-4 md:text-base"
+        class="inline-flex items-center gap-3 rounded-full border border-surface/40 bg-void px-6 py-3 text-sm font-bold uppercase tracking-[-0.02em] transition-colors duration-(--duration-base) ease-(--ease-inout) hover:border-surface hover:bg-surface hover:text-void md:px-8 md:py-4 md:text-base"
       >
         Hablemos
       </a>

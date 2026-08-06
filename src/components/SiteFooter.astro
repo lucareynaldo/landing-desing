@@ -135,14 +135,24 @@ const UPDATED = "Agosto 2026";
     position: absolute;
     inset: 0;
 
-    /* El color va ABAJO: cuatro manchas grandes y difusas de los acentos de la
-       marca. La grilla las recorta, asi que cada tramo de linea toma el color
-       de la zona por la que pasa. */
+    /* Base neutra, y NO es decorativa: es lo que garantiza que la grilla
+       exista en todos lados.
+
+       Como la tinta de las lineas es la capa de color, donde el color no
+       llega la grilla directamente no esta -no queda tenue, desaparece-. Con
+       las manchas solas quedaba una franja muerta en el medio, entre donde
+       dejaban de alcanzar las de arriba y donde empezaban las de abajo. El
+       gris llena el hueco y las manchas lo tiñen encima. */
+    background-color: hsla(222, 6%, 55%, 0.5);
+
+    /* Las manchas de color, en los acentos de la marca. Los radios son
+       generosos a proposito: con 40% de alto las de arriba y las de abajo no
+       se tocaban. */
     background-image:
-      radial-gradient(45% 40% at 15% 20%, var(--color-accent) 0%, transparent 70%),
-      radial-gradient(45% 40% at 85% 25%, #0055ff 0%, transparent 70%),
-      radial-gradient(45% 40% at 25% 85%, #12b76a 0%, transparent 70%),
-      radial-gradient(45% 40% at 80% 80%, var(--color-accent-warm) 0%, transparent 70%);
+      radial-gradient(55% 50% at 15% 20%, var(--color-accent) 0%, transparent 70%),
+      radial-gradient(55% 50% at 85% 25%, #0055ff 0%, transparent 70%),
+      radial-gradient(55% 50% at 25% 85%, #12b76a 0%, transparent 70%),
+      radial-gradient(55% 50% at 80% 80%, var(--color-accent-warm) 0%, transparent 70%);
 
     /* Las dos capas de mascara se componen con `add`, que es la union: una
        aporta las verticales y la otra las horizontales. */

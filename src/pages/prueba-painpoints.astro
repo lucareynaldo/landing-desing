@@ -1,0 +1,153 @@
+---
+// Banco de pruebas de PainPoint. NO forma parte del sitio: no esta linkeada
+// desde ningun lado y se borra con `rm src/pages/prueba-painpoints.astro`
+// cuando lleguen los assets del disenador.
+//
+// Existe porque la seccion real -PainPoints.astro- tiene una sola card, y esa
+// card usa un solo valor de cada prop. Aca cada card ejercita una combinacion
+// distinta, con un asset compuesto a proposito para esa combinacion.
+//
+// Que mirar, en orden:
+//   1. Scrolleando: las cards `modo="scrub"` avanzan atadas al scroll y
+//      retroceden al subir.
+//   2. Con el mouse encima de la card `tiempo`: el anillo se llena, y al salir
+//      se vacia. Sin mouse (tactil), un tap invierte la direccion.
+//   3. Con prefers-reduced-motion activo: no se descarga ningun cuadro y queda
+//      el ULTIMO de cada secuencia como imagen fija.
+//   4. Con JS apagado: lo mismo que 3.
+//   5. Achicando a ancho de movil: se abandona el aspect-ratio y manda
+//      min-height; ninguna card tiene que desbordar de texto.
+
+import Base from "../layouts/Base.astro";
+import PainPoint from "../components/PainPoint.astro";
+
+const TEXTO =
+  "Texto de relleno con el largo aproximado que va a tener un painpoint real, para que el parrafo ocupe las mismas lineas que va a ocupar en produccion y se vea si pisa el arte.";
+
+// Cada caso dice que prop esta probando. `nota` sale FUERA de la card: es
+// andamiaje del banco, no parte del componente.
+const casos = [
+  {
+    nota: "Base — el mismo caso que hay hoy en produccion. ancho completo (2/1), texto a la izquierda, scrub.",
+    props: {
+      eyebrow: "El feed",
+      titulo: "Cada publicación parece de una marca distinta",
+      texto: TEXTO,
+      secuencia: "feed",
+      fondo: "#000000",
+      tinta: "clara" as const,
+      columna: "izq" as const,
+      ancho: "completo" as const,
+    },
+  },
+  {
+    nota: "ancho medio (1/1) + tinta oscura sobre fondo claro. Las dos cards `medio` seguidas tienen que quedar una al lado de la otra desde md.",
+    props: {
+      eyebrow: "El ruido",
+      titulo: "Siete piezas, siete criterios",
+      texto: TEXTO,
+      secuencia: "ruido",
+      fondo: "#f4f4f4",
+      tinta: "oscura" as const,
+      columna: "izq" as const,
+      ancho: "medio" as const,
+    },
+  },
+  {
+    nota: 'modo="hover" + columna="der". Pasar el mouse por encima: avanza. Sacarlo: retrocede. No depende del scroll.',
+    props: {
+      eyebrow: "El tiempo",
+      titulo: "Todo urgente, nada primero",
+      texto: TEXTO,
+      secuencia: "tiempo",
+      fondo: "#101010",
+      tinta: "clara" as const,
+      columna: "der" as const,
+      ancho: "medio" as const,
+      modo: "hover" as const,
+      hover: { duracion: 900 },
+    },
+  },
+  {
+    nota: 'columna="centro" + `proporcion` explicita (7/3, distinta del 2/1 por defecto). El asset esta exportado a 1400x600: si no hubiera recorte, se ven las 24 barras enteras.',
+    props: {
+      eyebrow: "La escala",
+      titulo: "Crece la marca, no el sistema",
+      texto: TEXTO,
+      secuencia: "escala",
+      fondo: "#0a0a0a",
+      tinta: "clara" as const,
+      columna: "centro" as const,
+      ancho: "completo" as const,
+      proporcion: "7/3",
+    },
+  },
+  {
+    nota: "Recorte a proposito: el asset `escala` es 7/3 y la card pide 2/1. object-fit cover lo recorta por los lados en vez de deformarlo — es el motivo por el que el README pide exportar a la proporcion de la card.",
+    props: {
+      eyebrow: "Proporción equivocada",
+      titulo: "Este asset está recortado",
+      texto: TEXTO,
+      secuencia: "escala",
+      fondo: "#0a0a0a",
+      tinta: "clara" as const,
+      columna: "centro" as const,
+      ancho: "completo" as const,
+    },
+  },
+  {
+    nota: "scrub estirado: entrada 1.0 / salida 0.4. Arranca antes y termina antes que la card base — sirve para comparar contra la primera.",
+    props: {
+      eyebrow: "Scrub lento",
+      titulo: "La misma secuencia, otro timing",
+      texto: TEXTO,
+      secuencia: "feed",
+      fondo: "#000000",
+      tinta: "clara" as const,
+      columna: "izq" as const,
+      ancho: "completo" as const,
+      scrub: { entrada: 1.0, salida: 0.4 },
+    },
+  },
+];
+---
+
+<Base title="Banco de pruebas · PainPoint">
+  <section class="mx-auto max-w-[1400px] px-6 py-24 md:px-10 md:py-36">
+    <header>
+      <p class="type-meta text-ink-muted">Andamiaje, no sitio</p>
+      <h1 class="type-display mt-4 max-w-[20ch] text-[clamp(2rem,5vw,4rem)] text-ink-strong">
+        Banco de pruebas de PainPoint
+      </h1>
+      <p class="type-body mt-6 max-w-[60ch] text-ink-soft">
+        Assets de prueba generados con <code>npm run placeholder -- --todas</code>. Cada card
+        ejercita una combinación distinta de props. Cuando lleguen los cuadros reales, esta
+        página se borra.
+      </p>
+    </header>
+
+    {/*
+      El `col-span-2` que decide el ancho va en el WRAPPER, no en la card: la
+      card trae el suyo propio, pero aca queda envuelta junto a su nota y
+      entonces no es hija directa del grid. El de la card queda inerte -un
+      grid-column fuera de un contenedor grid no hace nada- y manda este.
+
+      Dos casos `medio` seguidos caen uno al lado del otro, que es exactamente
+      el ritmo bento que hay que poder verificar.
+
+      El gap vertical es grande a proposito: con las seis cards apiladas sin
+      aire, el scrub de una arranca mientras la anterior todavia corre y no se
+      distingue cual es cual.
+    */}
+    <div class="mt-16 grid grid-cols-1 gap-x-8 gap-y-24 md:mt-24 md:grid-cols-2">
+      {
+        casos.map((c) => (
+          <div class:list={[c.props.ancho === "completo" && "md:col-span-2"]}>
+            <p class="type-meta mb-4 max-w-[70ch] text-ink-muted">{c.nota}</p>
+            <PainPoint {...c.props} />
+          </div>
+        ))
+      }
+    </div>
+  </section>
+</Base>

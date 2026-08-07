@@ -21,7 +21,7 @@ interface Props {
   fondo?: string;
   tinta?: "clara" | "oscura";
   ancho?: "completo" | "medio";
-  /** aspect-ratio de la card, de md para arriba */
+  /** aspect-ratio de la card, de md para arriba. Por defecto sale de `ancho`. */
   proporcion?: string;
   scrub?: { entrada?: number; salida?: number };
   hover?: { duracion?: number };
@@ -37,13 +37,21 @@ const {
   fondo = "#000000",
   tinta = "clara",
   ancho = "completo",
-  proporcion = "16/10",
+  proporcion,
   scrub = {},
   hover = {},
 } = Astro.props;
 
 const { entrada = 0.9, salida = 0.15 } = scrub;
 const { duracion = 800 } = hover;
+
+// La proporcion por defecto sale del ancho, medida sobre las cards de
+// readymag: las de ancho completo son apaisadas (~1310x640) y las de media
+// cania, casi cuadradas (~640x580). Un unico default para las dos hace que una
+// de las dos quede siempre mal: 16/10 en una card de 1320px son 825px de alto,
+// casi un viewport entero.
+const PROPORCION = { completo: "2/1", medio: "1/1" } as const;
+const proporcionFinal = proporcion ?? PROPORCION[ancho];
 
 // El ancho de salida de los cuadros sale de la celda que ocupa la card. Generar
 // 1400px para una card que nunca se dibuja mas ancha que ~680 CSS px seria
@@ -75,29 +83,37 @@ const COLUMNA = {
     ancho === "completo" && "md:col-span-2",
     tinta === "clara" ? "text-white" : "text-ink-strong",
   ]}
-  style={`background:${fondo}; --proporcion:${proporcion};`}
+  style={`background:${fondo}; --proporcion:${proporcionFinal};`}
 >
-  <SecuenciaScrub
-    secuencia={secuencia}
-    alt={titulo}
-    modo={modo}
-    ancho={anchoCuadro}
-    entrada={entrada}
-    salida={salida}
-    duracion={duracion}
-    class="absolute inset-0 -z-10"
-  />
+  {/*
+    El posicionamiento del media va en este wrapper y no en SecuenciaScrub:
+    el componente llena la caja que le den pero no se posiciona solo, porque
+    su estilo scoped le ganaria por especificidad a la utilidad de Tailwind.
+  */}
+  <div class="absolute inset-0 -z-10">
+    <SecuenciaScrub
+      secuencia={secuencia}
+      alt={titulo}
+      modo={modo}
+      ancho={anchoCuadro}
+      entrada={entrada}
+      salida={salida}
+      duracion={duracion}
+    />
+  </div>
 
-  <header class:list={["max-w-[24ch]", COLUMNA[columna]]}>
+  {/*
+    El header NO lleva max-width. La unidad `ch` se resuelve contra el
+    font-size del PROPIO elemento, asi que un `max-w-[24ch]` aca -con los 16px
+    heredados- da ~220px y estrangula el titular a seis lineas, sin importar lo
+    que diga el max-width del h3. El limite va en el h3, donde `ch` mide contra
+    sus propios 52px. Es el mismo pozo que documenta PainPoints.astro.
+  */}
+  <header class={COLUMNA[columna]}>
     {eyebrow && <p class="type-meta opacity-70">{eyebrow}</p>}
-    {/*
-      El max-width va en el h3 y no en el header: la unidad `ch` se resuelve
-      contra el font-size del PROPIO elemento, y en el header (16px heredados)
-      daria una columna mucho mas angosta que la que se ve escrita.
-    */}
     <h3
       class:list={[
-        "type-display max-w-[16ch] text-[clamp(1.75rem,3.6vw,3.25rem)]",
+        "type-display max-w-[15ch] text-[clamp(1.75rem,3.6vw,3.25rem)]",
         columna === "der" && "ml-auto",
         columna === "centro" && "mx-auto",
         eyebrow && "mt-3",

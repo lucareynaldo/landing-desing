@@ -1,26 +1,24 @@
 ---
 import PainPoint from "./PainPoint.astro";
 
-// Por ahora se instancia un solo dolor, como acordamos. Agregar otro es
-// sumar un objeto a este array: la card ya es generica.
+// Agregar un dolor es sumar un objeto a este array y una carpeta de cuadros en
+// src/media/painpoints/. La card ya es generica: nada de lo de abajo pide tocar
+// PainPoint.astro.
+//
+// `ancho: "completo"` ocupa las dos columnas; dos dolores seguidos con
+// `ancho: "medio"` quedan uno al lado del otro, que es el ritmo bento de la
+// referencia.
 const dolores = [
   {
     eyebrow: "El feed",
-    pain: "Cada publicación parece de una marca distinta",
-    solution:
+    titulo: "Cada publicación parece de una marca distinta",
+    texto:
       "No es falta de ideas, es falta de sistema. Definimos una paleta, una retícula y una jerarquía tipográfica, y de golpe las mismas publicaciones se leen como una sola voz.",
-    // Feed roto: colores sin relacion entre si
-    before: [
-      "#ff2d55", "#00c2a8", "#ffcc00",
-      "#7b2fff", "#ff7a00", "#0066ff",
-      "#12d18e", "#ff4dd2", "#1a1a1a",
-    ],
-    // Mismo feed con sistema: una familia cromatica coherente
-    after: [
-      "#282828", "#e7e7e7", "#8800ff",
-      "#f4f4f4", "#282828", "#e7e7e7",
-      "#8800ff", "#e7e7e7", "#282828",
-    ],
+    secuencia: "feed",
+    fondo: "#000000",
+    tinta: "clara" as const,
+    columna: "izq" as const,
+    ancho: "completo" as const,
   },
 ];
 ---
@@ -39,7 +37,7 @@ const dolores = [
     </h2>
   </header>
 
-  <div class="mt-14 flex flex-col gap-8 md:mt-20">
+  <div class="mt-14 grid grid-cols-1 gap-6 md:mt-20 md:grid-cols-2 md:gap-8">
     {dolores.map((d) => <PainPoint {...d} />)}
   </div>
 </section>

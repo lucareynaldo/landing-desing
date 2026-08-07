@@ -120,8 +120,18 @@ const poster = urls[urls.length - 1];
 </div>
 
 <style>
+  /* El componente llena la caja que le den y crea el bloque contenedor de sus
+     dos capas. NO se posiciona a si mismo: quien lo usa lo envuelve en un div
+     con la posicion que necesite.
+
+     Es a proposito. Si aca dijera `position: absolute`, el estilo scoped de
+     Astro compila a `.secuencia[data-astro-cid-...]` -especificidad 0,2,0- y le
+     gana a cualquier utilidad de Tailwind que le pase el consumidor, que es
+     0,1,0. El consumidor no podria reposicionarlo ni sabiendo por que. */
   .secuencia {
     position: relative;
+    width: 100%;
+    height: 100%;
     overflow: hidden;
   }
   .secuencia-capa {

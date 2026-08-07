@@ -22,8 +22,12 @@ import sharp from "sharp";
 const RAIZ = path.resolve(fileURLToPath(new URL("..", import.meta.url)));
 
 const CUADROS = 40;
+
+// 2/1, la proporcion por defecto de una card `ancho="completo"`. Exportar a la
+// proporcion de la card importa: SecuenciaScrub dibuja con object-fit cover, y
+// un asset con otra proporcion se recorta por los bordes.
 const ANCHO = 1400;
-const ALTO = 875;
+const ALTO = 700;
 const FONDO = "#000000";
 
 // Feed sin sistema: nueve colores que no se hablan entre si.
@@ -50,10 +54,15 @@ const JIT = [
   [-12, -8], [9, 11], [-6, -10],
 ];
 
-const LADO = 660; // lado del cuadrado que forma la grilla
+// La grilla NO va centrada: va corrida a la derecha, dejando libre el 50% de
+// la izquierda. Es donde cae el texto con `columna="izq"`, y el componente no
+// pone ningun velo detras del titulo -igual que readymag-. Componer el asset
+// respetando la zona del texto es parte del trabajo del asset, no del codigo.
+const LADO = 560; // lado del cuadrado que forma la grilla
 const HUECO = 18;
 const CELDA = (LADO - 2 * HUECO) / 3;
-const X0 = (ANCHO - LADO) / 2;
+const MARGEN_DER = 90;
+const X0 = ANCHO - LADO - MARGEN_DER;
 const Y0 = (ALTO - LADO) / 2;
 
 /** @param {number} t @returns {number} */

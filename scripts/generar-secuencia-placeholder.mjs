@@ -13,6 +13,7 @@
 // Se niega a escribir sobre una carpeta que ya tiene contenido salvo que se
 // pase --force, para no pisarle los assets al disenador.
 
+import { Buffer } from "node:buffer";
 import { mkdir, readdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";

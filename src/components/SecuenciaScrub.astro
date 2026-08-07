@@ -1,0 +1,373 @@
+---
+// Dibuja una secuencia de cuadros en un canvas, con el progreso atado al scroll
+// o al hover. No sabe nada de painpoints: recibe el nombre de una carpeta.
+//
+// Por que una secuencia de cuadros y no un <video> scrubeado: fijar currentTime
+// obliga a hacer seek, y un mp4 normal solo salta a keyframes (uno cada ~2s),
+// asi que el scrub sale escalonado. Encodear con todos los cuadros como
+// keyframe lo arregla, pero infla el archivo hasta pesar lo mismo que la
+// secuencia -es una secuencia dentro de un contenedor- y encima hay que
+// explicarle la receta de encode a quien entregue el asset.
+
+import type { ImageMetadata } from "astro";
+import { getImage } from "astro:assets";
+
+interface Props {
+  /** Nombre de la carpeta en src/media/painpoints/ */
+  secuencia: string;
+  alt: string;
+  modo?: "scrub" | "hover";
+  /** Ancho de salida de los cuadros, en px */
+  ancho?: number;
+  /** p=0 cuando el borde superior de la card esta a `entrada` del alto del viewport */
+  entrada?: number;
+  /** p=1 cuando llego a `salida` */
+  salida?: number;
+  /** ms del recorrido completo en modo hover */
+  duracion?: number;
+  class?: string;
+}
+
+const {
+  secuencia,
+  alt,
+  modo = "scrub",
+  ancho = 1400,
+  entrada = 0.9,
+  salida = 0.15,
+  duracion = 800,
+  class: clase,
+} = Astro.props;
+
+// El patron del glob tiene que ser un literal: Vite lo analiza estaticamente y
+// no acepta una variable. Por eso se traen TODAS las secuencias y se filtra
+// despues por prefijo. Es trabajo de build, no de runtime.
+const TODOS = import.meta.glob<{ default: ImageMetadata }>(
+  "/src/media/painpoints/*/*.{webp,png,jpg,jpeg,avif}",
+  { eager: true },
+);
+
+const prefijo = `/src/media/painpoints/${secuencia}/`;
+const rutas = Object.keys(TODOS)
+  .filter((r) => r.startsWith(prefijo))
+  .sort();
+
+if (rutas.length === 0) {
+  throw new Error(
+    `SecuenciaScrub: no hay cuadros en src/media/painpoints/${secuencia}/.\n` +
+      `Se esperan archivos numerados y ordenables por nombre: 0001.webp, 0002.webp, ...\n` +
+      `Formatos aceptados: .webp .png .jpg .jpeg .avif`,
+  );
+}
+
+// El alto se deriva del primer cuadro en vez de leerse del resultado de
+// getImage(): asi el markup no depende de la forma de ese objeto.
+const origen = TODOS[rutas[0]].default;
+const anchoSalida = Math.min(ancho, origen.width);
+const altoSalida = Math.round((origen.height / origen.width) * anchoSalida);
+
+const optimizados = await Promise.all(
+  rutas.map((r) =>
+    getImage({ src: TODOS[r].default, format: "webp", width: anchoSalida }),
+  ),
+);
+const urls = optimizados.map((o) => o.src);
+
+// El poster es el ULTIMO cuadro, no el primero: es lo que se ve sin JS y con
+// prefers-reduced-motion, y en un painpoint lo que tiene que quedar en pantalla
+// si la animacion nunca corre es la resolucion, no el problema.
+const poster = urls[urls.length - 1];
+---
+
+<div
+  class:list={["secuencia", clase]}
+  data-secuencia
+  data-modo={modo}
+  data-entrada={entrada}
+  data-salida={salida}
+  data-duracion={duracion}
+>
+  <img
+    class="secuencia-capa"
+    src={poster}
+    width={anchoSalida}
+    height={altoSalida}
+    alt={alt}
+    loading="lazy"
+    decoding="async"
+  />
+  <canvas
+    class="secuencia-capa secuencia-lienzo"
+    width={anchoSalida}
+    height={altoSalida}
+    aria-hidden="true"
+    data-lienzo></canvas>
+  {/*
+    Las URLs viajan en un <script type="application/json"> y no por define:vars
+    a proposito: define:vars fuerza is:inline, y con eso el motor entero se
+    duplicaria una vez por instancia en vez de bundlearse una sola vez.
+
+    `is:inline` va explicito porque esto es DATO, no codigo: no hay nada que
+    bundlear ni transpilar, y sin el Astro avisa que lo va a tratar como inline
+    igual (tiene atributos propios).
+  */}
+  <script
+    is:inline
+    type="application/json"
+    data-cuadros
+    set:html={JSON.stringify(urls)}
+  />
+</div>
+
+<style>
+  .secuencia {
+    position: relative;
+    overflow: hidden;
+  }
+  .secuencia-capa {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    /* cover y no fill: si la proporcion de la card no coincide con la del
+       asset, se recorta en vez de deformarse. Aplica a <canvas> igual que a
+       <img>: los dos son elementos reemplazados. */
+    object-fit: cover;
+  }
+  .secuencia-lienzo {
+    opacity: 0;
+    transition: opacity var(--duration-base) var(--ease-out);
+  }
+  .secuencia-lienzo[data-listo] {
+    opacity: 1;
+  }
+</style>
+
+<script>
+  import { avanzarHover, cuadroDe, progresoScrub } from "../scripts/scrub.mjs";
+
+  // Astro iza este script y lo ejecuta UNA sola vez, aunque haya seis
+  // instancias del componente en la pagina. De ahi el querySelectorAll.
+  (() => {
+    const raices = document.querySelectorAll<HTMLElement>("[data-secuencia]");
+    if (!raices.length) return;
+
+    // Con reduced-motion no se instancia el motor Y NO SE DESCARGA NINGUN
+    // CUADRO. Se ahorra el peso entero de las secuencias y queda el poster,
+    // que es el ultimo cuadro. Es la degradacion mas honesta y la mas rapida.
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      raices.forEach((r) => r.querySelector("[data-lienzo]")?.remove());
+      return;
+    }
+
+    interface Instancia {
+      raiz: HTMLElement;
+      lienzo: HTMLCanvasElement;
+      ctx: CanvasRenderingContext2D;
+      urls: string[];
+      imgs: (HTMLImageElement | null)[];
+      listos: boolean[];
+      /** cuantos cuadros consecutivos desde 0 ya resolvieron */
+      tope: number;
+      modo: "scrub" | "hover";
+      entrada: number;
+      salida: number;
+      duracion: number;
+      p: number;
+      dir: 1 | -1;
+      ultimo: number;
+      pidiendo: boolean;
+    }
+
+    const instancias: Instancia[] = [];
+
+    raices.forEach((raiz) => {
+      const lienzo = raiz.querySelector<HTMLCanvasElement>("[data-lienzo]");
+      const datos = raiz.querySelector<HTMLScriptElement>("[data-cuadros]");
+      const ctx = lienzo?.getContext("2d");
+      if (!lienzo || !datos || !ctx) return;
+
+      let urls: string[];
+      try {
+        urls = JSON.parse(datos.textContent || "[]");
+      } catch {
+        return;
+      }
+      if (!urls.length) return;
+
+      const inst: Instancia = {
+        raiz,
+        lienzo,
+        ctx,
+        urls,
+        imgs: new Array(urls.length).fill(null),
+        listos: new Array(urls.length).fill(false),
+        tope: 0,
+        modo: raiz.dataset.modo === "hover" ? "hover" : "scrub",
+        entrada: Number(raiz.dataset.entrada ?? 0.9),
+        salida: Number(raiz.dataset.salida ?? 0.15),
+        duracion: Number(raiz.dataset.duracion ?? 800),
+        p: 0,
+        dir: -1,
+        ultimo: -1,
+        pidiendo: false,
+      };
+      instancias.push(inst);
+
+      if (inst.modo === "hover") {
+        if (matchMedia("(pointer: fine)").matches) {
+          raiz.addEventListener("pointerenter", () => (inst.dir = 1));
+          raiz.addEventListener("pointerleave", () => (inst.dir = -1));
+        } else {
+          // En tactil no hay hover: un tap invierte la direccion.
+          raiz.addEventListener("pointerdown", () => {
+            inst.dir = inst.dir > 0 ? -1 : 1;
+          });
+        }
+      }
+    });
+
+    if (!instancias.length) return;
+
+    // --- Precarga -------------------------------------------------------
+    // En orden y con concurrencia tope, para que los primeros cuadros -que son
+    // los que se ven primero- lleguen primero. Con 40 requests disparados de
+    // una, el navegador los sirve en cualquier orden y la animacion se queda
+    // esperando el cuadro 3 mientras ya tiene el 37.
+    const CONCURRENCIA = 6;
+
+    function precargar(inst: Instancia) {
+      if (inst.pidiendo) return;
+      inst.pidiendo = true;
+
+      let siguiente = 0;
+      let activos = 0;
+
+      const avanzarTope = () => {
+        while (inst.tope < inst.listos.length && inst.listos[inst.tope]) {
+          inst.tope++;
+        }
+      };
+
+      const bombear = () => {
+        while (activos < CONCURRENCIA && siguiente < inst.urls.length) {
+          const i = siguiente++;
+          activos++;
+          const img = new Image();
+          img.decoding = "async";
+          const resolver = () => {
+            activos--;
+            inst.imgs[i] = img.naturalWidth > 0 ? img : null;
+            inst.listos[i] = true;
+            avanzarTope();
+            bombear();
+          };
+          img.onload = resolver;
+          img.onerror = resolver;
+          img.src = inst.urls[i];
+        }
+      };
+
+      bombear();
+    }
+
+    // --- Dibujo ---------------------------------------------------------
+    function dibujar(inst: Instancia, idx: number) {
+      // Un cuadro que fallo al cargar se salta hacia atras hasta el ultimo
+      // bueno, para no dejar el canvas en blanco por un 404 suelto.
+      let i = idx;
+      while (i >= 0 && !inst.imgs[i]) i--;
+      const img = i >= 0 ? inst.imgs[i] : null;
+      if (!img) return;
+
+      inst.ctx.drawImage(img, 0, 0, inst.lienzo.width, inst.lienzo.height);
+      inst.ultimo = idx;
+      if (!inst.lienzo.hasAttribute("data-listo")) {
+        inst.lienzo.setAttribute("data-listo", "");
+      }
+    }
+
+    // --- Loop -----------------------------------------------------------
+    // Un solo rAF para todas las instancias, y corre solo mientras haya alguna
+    // en pantalla.
+    //
+    // rAF permanente en vez de un listener de scroll porque el sitio usa Lenis:
+    // un listener solo se entera cuando el navegador emite un scroll nativo, y
+    // Lenis interpola posiciones ENTRE esos eventos, asi que la animacion
+    // quedaria un escalon atras del contenido que la rodea. Leer
+    // getBoundingClientRect() por frame es inmune a eso.
+    const vivas = new Set<Instancia>();
+    let corriendo = false;
+    let previo = 0;
+
+    function frame(t: number) {
+      const dt = previo ? Math.min(64, t - previo) : 16;
+      previo = t;
+      const vh = window.innerHeight;
+
+      vivas.forEach((inst) => {
+        if (inst.modo === "scrub") {
+          const top = inst.raiz.getBoundingClientRect().top;
+          inst.p = progresoScrub(top, vh, inst.entrada, inst.salida);
+        } else {
+          inst.p = avanzarHover(inst.p, dt, inst.duracion, inst.dir);
+        }
+
+        const deseado = cuadroDe(inst.p, inst.urls.length);
+        // Mientras la precarga va por la mitad se dibuja el ultimo cuadro
+        // disponible: la animacion se pone al dia sola en vez de mostrar un
+        // hueco.
+        const idx = inst.tope > 0 ? Math.min(deseado, inst.tope - 1) : -1;
+        if (idx >= 0 && idx !== inst.ultimo) dibujar(inst, idx);
+      });
+
+      if (vivas.size) {
+        requestAnimationFrame(frame);
+      } else {
+        corriendo = false;
+        previo = 0;
+      }
+    }
+
+    function arrancar() {
+      if (corriendo) return;
+      corriendo = true;
+      requestAnimationFrame(frame);
+    }
+
+    const porRaiz = new Map(instancias.map((i) => [i.raiz, i]));
+
+    // La descarga arranca ~1,5 pantallas antes de que la card entre, asi que
+    // para cuando se ve ya hay cuadros. No compite con el render inicial.
+    const ioCarga = new IntersectionObserver(
+      (entradas) => {
+        entradas.forEach((e) => {
+          if (!e.isIntersecting) return;
+          const inst = porRaiz.get(e.target as HTMLElement);
+          if (inst) precargar(inst);
+          ioCarga.unobserve(e.target);
+        });
+      },
+      { rootMargin: "150% 0px" },
+    );
+
+    const ioVivas = new IntersectionObserver(
+      (entradas) => {
+        entradas.forEach((e) => {
+          const inst = porRaiz.get(e.target as HTMLElement);
+          if (!inst) return;
+          if (e.isIntersecting) vivas.add(inst);
+          else vivas.delete(inst);
+        });
+        if (vivas.size) arrancar();
+      },
+      { rootMargin: "10% 0px" },
+    );
+
+    instancias.forEach((inst) => {
+      ioCarga.observe(inst.raiz);
+      ioVivas.observe(inst.raiz);
+    });
+  })();
+</script>

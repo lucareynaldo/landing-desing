@@ -10,7 +10,8 @@
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro",
-    "test": "node --test \"test/**/*.test.mjs\""
+    "test": "node --test \"test/**/*.test.mjs\"",
+    "placeholder": "node scripts/generar-secuencia-placeholder.mjs"
   },
   "dependencies": {
     "@astrojs/react": "^6.0.2",
@@ -26,6 +27,7 @@
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.10",
+    "sharp": "^0.35.3",
     "simple-icons": "^16.28.0",
     "typescript": "^6.0.3"
   }

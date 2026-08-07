@@ -81,7 +81,13 @@ const COLUMNA = {
     "painpoint relative isolate flex min-h-[28rem] flex-col justify-between overflow-hidden rounded-[2rem] p-7",
     "md:min-h-0 md:rounded-[2.5rem] md:p-10 md:[aspect-ratio:var(--proporcion)] lg:p-12",
     ancho === "completo" && "md:col-span-2",
-    tinta === "clara" ? "text-white" : "text-ink-strong",
+    // Los dos lados del ternario tienen que ser colores LITERALES. `fondo` es
+    // un color literal que no se invierte con el tema, asi que la tinta tampoco
+    // puede hacerlo: con `text-ink-strong` -que es un token y en oscuro vale
+    // #ffffff- una card de fondo claro quedaba blanco sobre blanco al pasar a
+    // modo oscuro. Es la misma regla que ya declara global.css: las paletas que
+    // viven en los componentes estan elegidas como color, no como contraste.
+    tinta === "clara" ? "text-white" : "text-black",
   ]}
   style={`background:${fondo}; --proporcion:${proporcionFinal};`}
 >

@@ -527,7 +527,18 @@ const DATOS = TRABAJOS.map((t) => ({
     const slugInicial = new URLSearchParams(location.search).get("trabajo");
     if (slugInicial) {
       const i = porSlug(slugInicial);
-      if (i >= 0) requestAnimationFrame(() => abrir(i, buscarTile(slugInicial), false));
+      if (i >= 0) {
+        // La entrada de historial con ?trabajo= es la de aterrizaje: no la puso
+        // abrir(), como si el detalle se hubiera abierto con un click. Sin
+        // plantar una entrada limpia debajo, el history.back() de cerrar()
+        // retrocede al sitio anterior y saca al visitante de la pagina.
+        // Con esto el cierre --y el boton atras-- devuelven a la landing.
+        const limpia = new URL(location.href);
+        limpia.searchParams.delete("trabajo");
+        history.replaceState(null, "", limpia);
+        history.pushState({ trabajo: slugInicial }, "", `?trabajo=${slugInicial}`);
+        requestAnimationFrame(() => abrir(i, buscarTile(slugInicial), false));
+      }
     }
   })();
 </script>

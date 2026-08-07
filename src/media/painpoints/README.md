@@ -63,6 +63,28 @@ columna="izq"                    columna="der"
 El placeholder de `feed/` está compuesto así y sirve de referencia: la grilla
 arranca al 50% del ancho.
 
+**En una card `medio` la columna libre casi no existe.** Medido en navegador:
+la card queda de ~644 px y el titular (`max-w: 15ch`) más el párrafo
+(`max-w: 46ch`) se comen casi todo el ancho útil, así que dejar «media card
+limpia» no alcanza. Lo que sí queda libre siempre es la **banda del medio**,
+porque la card es `justify-between`: título arriba, párrafo abajo, y el centro
+vacío. Componé el arte de las cards `medio` entre el 33 % y el 68 % del alto.
+
+```
+ancho="medio"
+┌───────────────────┐
+│ TÍTULO            │  ← ocupado
+├───────────────────┤
+│ ░░░░ arte ░░░░░░░ │  ← 33%–68%: libre
+├───────────────────┤
+│ párrafo           │  ← ocupado
+└───────────────────┘
+```
+
+Con `columna="centro"` pasa lo mismo pero es lo único que sirve: el título cae
+arriba al medio y el párrafo abajo al medio, así que el arte tiene que vivir en
+la franja horizontal del centro y no subir ni bajar de ahí.
+
 ### El `fondo` de la card queda tapado
 
 Si el asset es opaco y llena la card, `fondo` sólo se ve en los milisegundos
@@ -94,12 +116,34 @@ Si dos carpetas tuvieran cuadros byte a byte idénticos y las dos cards usaran e
 mismo `ancho`, Astro los deduplica en un solo archivo. No es un problema: las
 secuencias siguen siendo independientes en cantidad y orden.
 
-## Placeholder
+## Placeholders
 
-`feed/` tiene hoy una secuencia generada por
-`scripts/generar-secuencia-placeholder.mjs`. Vaciá la carpeta y tirá los
-cuadros reales adentro; el script no hace falta más (y se niega a pisar una
-carpeta con contenido salvo que le pases `--force`).
+Las cuatro carpetas que hay hoy son placeholders generados por
+`scripts/generar-secuencia-placeholder.mjs`, una receta por carpeta. Existen
+para poder probar el componente sin assets reales, y cada una cubre una
+combinación distinta de props:
+
+| carpeta | tamaño | cuadros | para probar |
+|---|---|---|---|
+| `feed` | 1400 × 700 (2/1) | 40 | `ancho="completo"` `columna="izq"` `modo="scrub"` |
+| `ruido` | 760 × 760 (1/1) | 28 | `ancho="medio"` `tinta="oscura"` sobre fondo claro |
+| `tiempo` | 760 × 760 (1/1) | 28 | `columna="der"` `modo="hover"` |
+| `escala` | 1400 × 600 (7/3) | 32 | `columna="centro"` + `proporcion` explícita |
+
+```
+npm run placeholder                  # sólo feed
+npm run placeholder -- --todas       # las cuatro
+npm run placeholder -- ruido --force # una, pisando lo que haya
+```
+
+Se ven todas juntas en `/prueba-painpoints`, que es la página banco de pruebas.
+Esa página es andamiaje y **no** forma parte del sitio: se borra sola con
+`rm src/pages/prueba-painpoints.astro`.
+
+Cuando lleguen los cuadros reales de una card: vaciá su carpeta y tiralos
+adentro. El script no hace falta más para esa secuencia (y se niega a pisar una
+carpeta con contenido salvo que le pases `--force`). Las carpetas placeholder
+que no se usen se borran enteras.
 
 Carpeta vacía o inexistente rompe el build con un mensaje que la nombra.
 

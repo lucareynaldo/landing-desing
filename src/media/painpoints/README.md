@@ -13,7 +13,13 @@ src/media/painpoints/
 
 ## Reglas del asset
 
-- Los cuadros se ordenan **por nombre de archivo**. Zero-padding obligatorio.
+- Los cuadros se ordenan **por nombre de archivo**, y el orden es lexicográfico.
+  El zero-padding es obligatorio: con `1.webp`, `2.webp`, `10.webp` el 10 se
+  cuela antes del 2.
+- **Un solo formato por carpeta.** Si conviven `0001.png` y `0001.webp`, los dos
+  entran y ese cuadro sale duplicado.
+- **Sin subcarpetas.** La búsqueda es de un nivel: `feed/v2/0001.webp` no se
+  encuentra.
 - Formatos aceptados: `.webp` `.png` `.jpg` `.jpeg` `.avif`. Astro los reencodea
   a WebP en build, al ancho que corresponda según el `ancho` de la card
   (1400 px si es `completo`, 760 px si es `medio`), así que podés exportar sin
@@ -68,6 +74,25 @@ que no haya un salto. `tinta` sí importa siempre: es el color del texto.
 Es lo que se ve sin JS y con `prefers-reduced-motion` — en ese caso la
 secuencia **no se descarga**, sólo el poster. Que el último cuadro se sostenga
 solo como imagen fija.
+
+## Varias cards a la vez
+
+Una carpeta por card, y **todas empiezan en `0001`**. No hace falta prefijar ni
+inventar nombres únicos:
+
+```
+src/media/painpoints/
+  feed/          → secuencia="feed"          0001.webp … 0040.webp
+  presupuesto/   → secuencia="presupuesto"   0001.webp … 0032.webp
+```
+
+No chocan: el filtro es por carpeta con barra final (así que ni `feed` y `feed2`
+se pisan), Astro le pone hash de contenido y de transformación a cada archivo de
+salida, y cada card lee sus propias URLs.
+
+Si dos carpetas tuvieran cuadros byte a byte idénticos y las dos cards usaran el
+mismo `ancho`, Astro los deduplica en un solo archivo. No es un problema: las
+secuencias siguen siendo independientes en cantidad y orden.
 
 ## Placeholder
 

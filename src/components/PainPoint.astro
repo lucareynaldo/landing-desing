@@ -1,149 +1,113 @@
 ---
-// Card generica de painpoint. El dolor y la solucion conviven en la misma
-// pieza: el "despues" se revela por encima del "antes" con un wipe que scrubea
-// con el scroll (no es un trigger de una sola vez, sigue la posicion).
+// Card de painpoint, con el molde de las cards de readymag.com: fondo solido
+// propio, media full-bleed por debajo del texto, y el texto en dos bloques
+// anclados -titulo arriba, parrafo abajo- dentro de una columna que se elige
+// por prop.
 //
-// Los feeds son placeholders generados con CSS. Se van cuando el diseñador
-// entregue las capturas reales, pero mientras tanto ya ilustran el argumento:
-// el de la izquierda no tiene sistema, el de la derecha si.
+// La animacion no vive aca: la card solo dice que carpeta de cuadros mostrar y
+// bajo que condiciones. El motor esta en SecuenciaScrub.
+
+import SecuenciaScrub from "./SecuenciaScrub.astro";
 
 interface Props {
-  eyebrow: string;
-  pain: string;
-  solution: string;
-  /** 9 colores del feed roto */
-  before: string[];
-  /** 9 colores del feed arreglado */
-  after: string[];
+  titulo: string;
+  texto: string;
+  /** Carpeta de cuadros en src/media/painpoints/ */
+  secuencia: string;
+  eyebrow?: string;
+  columna?: "izq" | "der" | "centro";
+  modo?: "scrub" | "hover";
+  /** Color de fondo de la card. Color libre, no token: ver global.css:70-75 */
+  fondo?: string;
+  tinta?: "clara" | "oscura";
+  ancho?: "completo" | "medio";
+  /** aspect-ratio de la card, de md para arriba */
+  proporcion?: string;
+  scrub?: { entrada?: number; salida?: number };
+  hover?: { duracion?: number };
 }
 
-const { eyebrow, pain, solution, before, after } = Astro.props;
+const {
+  titulo,
+  texto,
+  secuencia,
+  eyebrow,
+  columna = "izq",
+  modo = "scrub",
+  fondo = "#000000",
+  tinta = "clara",
+  ancho = "completo",
+  proporcion = "16/10",
+  scrub = {},
+  hover = {},
+} = Astro.props;
+
+const { entrada = 0.9, salida = 0.15 } = scrub;
+const { duracion = 800 } = hover;
+
+// El ancho de salida de los cuadros sale de la celda que ocupa la card. Generar
+// 1400px para una card que nunca se dibuja mas ancha que ~680 CSS px seria
+// tirar mas de la mitad del peso a la basura.
+const anchoCuadro = ancho === "completo" ? 1400 : 760;
+
+// La columna se resuelve con margenes automaticos y no con un grid de 12: son
+// tres casos, y `mr-auto` se lee mejor que `col-start-1 col-span-5`.
+const COLUMNA = {
+  izq: "mr-auto text-left",
+  der: "ml-auto text-right",
+  centro: "mx-auto text-center",
+} as const;
 ---
 
+{/*
+  `isolate` mas `-z-10` en el media es lo que deja el canvas por encima del
+  fondo de la card pero por debajo del texto, sin sacarlo de la card: dentro de
+  un contexto de apilamiento, los hijos con z negativo pintan despues del fondo
+  del propio elemento.
+
+  En movil se abandona el aspect-ratio y manda min-height: con la card angosta,
+  un aspect-ratio fijo mas cuatro lineas de parrafo desborda.
+*/}
 <article
-  class="painpoint grid gap-8 rounded-[2rem] bg-surface-2 p-6 md:grid-cols-[1.1fr_1fr] md:gap-12 md:p-10 lg:p-14"
-  data-painpoint
+  class:list={[
+    "painpoint relative isolate flex min-h-[28rem] flex-col justify-between overflow-hidden rounded-[2rem] p-7",
+    "md:min-h-0 md:rounded-[2.5rem] md:p-10 md:[aspect-ratio:var(--proporcion)] lg:p-12",
+    ancho === "completo" && "md:col-span-2",
+    tinta === "clara" ? "text-white" : "text-ink-strong",
+  ]}
+  style={`background:${fondo}; --proporcion:${proporcion};`}
 >
-  {/* --- Media: antes / despues --- */}
-  <div class="relative overflow-hidden rounded-3xl bg-surface" style="aspect-ratio: 1;">
-    {/* ANTES: feed incoherente */}
-    <div class="absolute inset-0 grid grid-cols-3 gap-1.5 p-1.5">
-      {
-        before.map((c, i) => (
-          <div
-            class="rounded-lg"
-            style={`background:${c}; transform: rotate(${((i * 37) % 7) - 3}deg) scale(0.97);`}
-          />
-        ))
-      }
-    </div>
+  <SecuenciaScrub
+    secuencia={secuencia}
+    alt={titulo}
+    modo={modo}
+    ancho={anchoCuadro}
+    entrada={entrada}
+    salida={salida}
+    duracion={duracion}
+    class="absolute inset-0 -z-10"
+  />
 
-    {/* DESPUES: mismo feed, con sistema. Se descubre con el wipe. */}
-    <div
-      class="painpoint-after absolute inset-0 grid grid-cols-3 gap-1.5 bg-surface p-1.5"
-      data-after
+  <header class:list={["max-w-[24ch]", COLUMNA[columna]]}>
+    {eyebrow && <p class="type-meta opacity-70">{eyebrow}</p>}
+    {/*
+      El max-width va en el h3 y no en el header: la unidad `ch` se resuelve
+      contra el font-size del PROPIO elemento, y en el header (16px heredados)
+      daria una columna mucho mas angosta que la que se ve escrita.
+    */}
+    <h3
+      class:list={[
+        "type-display max-w-[16ch] text-[clamp(1.75rem,3.6vw,3.25rem)]",
+        columna === "der" && "ml-auto",
+        columna === "centro" && "mx-auto",
+        eyebrow && "mt-3",
+      ]}
     >
-      {after.map((c) => <div class="rounded-lg" style={`background:${c};`} />)}
-    </div>
-
-    {/* Linea divisoria que acompaña al wipe */}
-    <div
-      class="painpoint-divider pointer-events-none absolute inset-y-0 w-px bg-ink-strong/70"
-      data-divider
-      aria-hidden="true"
-    >
-    </div>
-
-    <span class="type-meta absolute left-4 top-4 rounded-full bg-surface/85 px-2.5 py-1 text-ink backdrop-blur-sm">
-      Antes
-    </span>
-    <span
-      class="painpoint-tag type-meta absolute right-4 top-4 rounded-full bg-ink-strong px-2.5 py-1 text-surface"
-      data-tag
-    >
-      Después
-    </span>
-  </div>
-
-  {/* --- Copy --- */}
-  <div class="flex flex-col justify-center">
-    <p class="type-meta text-ink-muted">{eyebrow}</p>
-    <h3 class="type-display mt-4 text-[clamp(1.75rem,3.4vw,3rem)] text-ink-strong">
-      {pain}
+      {titulo}
     </h3>
-    <p class="type-body mt-5 max-w-[42ch] text-lg text-ink-soft">{solution}</p>
-  </div>
+  </header>
+
+  <p class:list={["type-body mt-8 max-w-[46ch] text-base md:text-lg", COLUMNA[columna]]}>
+    {texto}
+  </p>
 </article>
-
-<style>
-  /* El wipe arranca tapado y se abre segun --p (0 a 1), que escribe el JS.
-     Avanza de derecha a izquierda: el lado izquierdo sigue siendo el "antes"
-     hasta el final, que es como se lee la comparacion. */
-  .painpoint-after {
-    clip-path: inset(0 0 0 calc((1 - var(--p, 0)) * 100%));
-  }
-  .painpoint-divider {
-    left: calc((1 - var(--p, 0)) * 100%);
-    opacity: calc(var(--p, 0) * (1 - var(--p, 0)) * 4);
-  }
-  .painpoint-tag {
-    opacity: var(--p, 0);
-    transition: opacity 200ms var(--ease-out);
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .painpoint-after {
-      clip-path: inset(0 0 0 0);
-    }
-    .painpoint-divider {
-      display: none;
-    }
-    .painpoint-tag {
-      opacity: 1;
-    }
-  }
-</style>
-
-<script>
-  // Scrub del wipe segun la posicion de la card en el viewport.
-  // rAF-throttled: el handler de scroll solo marca sucio, el trabajo va en el frame.
-  const cards = document.querySelectorAll<HTMLElement>("[data-painpoint]");
-  if (cards.length && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
-    const visibles = new Set<HTMLElement>();
-    let pendiente = false;
-
-    const pintar = () => {
-      pendiente = false;
-      const vh = window.innerHeight;
-      visibles.forEach((card) => {
-        const r = card.getBoundingClientRect();
-        // 0 cuando la card entra por abajo, 1 cuando su centro pasa el 40% superior
-        const bruto = (vh - r.top) / (vh * 0.55 + r.height * 0.35);
-        card.style.setProperty("--p", String(Math.min(1, Math.max(0, bruto))));
-      });
-    };
-
-    const alScrollear = () => {
-      if (!pendiente) {
-        pendiente = true;
-        requestAnimationFrame(pintar);
-      }
-    };
-
-    const io = new IntersectionObserver(
-      (entradas) => {
-        entradas.forEach((e) => {
-          if (e.isIntersecting) visibles.add(e.target as HTMLElement);
-          else visibles.delete(e.target as HTMLElement);
-        });
-        if (visibles.size) alScrollear();
-      },
-      { rootMargin: "10% 0px" },
-    );
-
-    cards.forEach((c) => io.observe(c));
-    window.addEventListener("scroll", alScrollear, { passive: true });
-    window.addEventListener("resize", alScrollear, { passive: true });
-    pintar();
-  }
-</script>
